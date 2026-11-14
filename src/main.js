@@ -40,8 +40,8 @@ function applySettings(s) {
   $("local-rate").value = s.local_rate;
   $("rate-out").textContent = s.local_rate;
 
-  $("speed").value = s.speed;
-  $("speed-out").textContent = Number(s.speed).toFixed(2) + "×";
+  setSpeed(s.speed);
+  limitSpeeds(s.provider);
   $("restore-clipboard").checked = s.restore_clipboard;
   $("show-pill").checked = s.show_pill;
   $("launch-startup").checked = s.launch_at_startup;
@@ -60,7 +60,7 @@ function gatherSettings() {
     read_tap_key: $("read-tap-key").value,
     restore_clipboard: $("restore-clipboard").checked,
     show_pill: $("show-pill").checked,
-    speed: parseFloat($("speed").value),
+    speed: currentSpeed(),
     launch_at_startup: $("launch-startup").checked,
     openai_model: $("openai-model").value,
     openai_voice: $("openai-voice").value,
@@ -82,6 +82,32 @@ function showPanel(provider) {
   });
   // The System voice has its own rate control; everything else uses speed.
   $("speed-card").hidden = provider === "local";
+  limitSpeeds(provider);
+}
+
+// ---------------------------------------------------------------------------
+// Speed
+// ---------------------------------------------------------------------------
+const speedRadios = () => document.querySelectorAll('input[name="speed"]');
+// ElevenLabs reads at 1.2x at most (src-tauri/src/tts/elevenlabs.rs).
+const SPEED_LIMITS = { elevenlabs: 1.2 };
+
+function setSpeed(speed) {
+  for (const r of speedRadios()) r.checked = Math.abs(parseFloat(r.value) - speed) < 0.01;
+  $("speed-out").textContent = currentSpeed().toFixed(1) + "×";
+}
+
+function currentSpeed() {
+  const r = document.querySelector('input[name="speed"]:checked');
+  return r ? parseFloat(r.value) : 1.0;
+}
+
+// Grey out the speeds a provider can't reach, and say why. A faster saved
+// speed is kept, for when the user switches back.
+function limitSpeeds(provider) {
+  const limit = SPEED_LIMITS[provider] ?? Infinity;
+  for (const r of speedRadios()) r.disabled = parseFloat(r.value) > limit + 1e-9;
+  $("speed-note").hidden = limit === Infinity;
 }
 
 document.querySelectorAll('input[name="provider"]').forEach((r) => {
@@ -309,8 +335,8 @@ async function updateStatus() {
 // ---------------------------------------------------------------------------
 // Sliders
 // ---------------------------------------------------------------------------
-$("speed").addEventListener("input", (e) => {
-  $("speed-out").textContent = Number(e.target.value).toFixed(2) + "×";
+speedRadios().forEach((r) => {
+  r.addEventListener("change", () => setSpeed(currentSpeed()));
 });
 $("local-rate").addEventListener("input", (e) => {
   $("rate-out").textContent = e.target.value;

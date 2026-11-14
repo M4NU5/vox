@@ -41,6 +41,10 @@ pub fn get_provider_status() -> ProviderStatus {
 
 #[tauri::command]
 pub fn save_settings(app: AppHandle, state: State<AppState>, new: Settings) -> Result<(), String> {
+    let new = Settings {
+        speed: settings::snap_speed(new.speed),
+        ..new
+    };
     // Persist to disk.
     settings::save(&new)?;
 
