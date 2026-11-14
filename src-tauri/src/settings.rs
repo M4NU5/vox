@@ -63,7 +63,8 @@ pub struct Settings {
     pub read_tap_key: String,
     /// Restore the user's previous clipboard contents after capturing selection.
     pub restore_clipboard: bool,
-    /// Playback speed multiplier (0.5 - 2.0 for cloud providers).
+    /// Playback speed multiplier, one of 1.0 to 2.0 in steps of 0.2. See
+    /// [`snap_speed`].
     pub speed: f32,
     /// Launch the app automatically at login.
     pub launch_at_startup: bool,
@@ -159,9 +160,24 @@ fn dirs_config_dir() -> Option<PathBuf> {
 /// Load settings from disk, falling back to defaults on any error.
 pub fn load() -> Settings {
     match config_path().and_then(|p| std::fs::read_to_string(&p).map_err(|e| e.to_string())) {
-        Ok(contents) => serde_json::from_str(&contents).unwrap_or_default(),
+        Ok(contents) => serde_json::from_str(&contents)
+            .map(|s: Settings| Settings {
+                speed: snap_speed(s.speed),
+                ..s
+            })
+            .unwrap_or_default(),
         Err(_) => Settings::default(),
     }
+}
+
+/// The nearest speed Settings offers: 1.0 to 2.0 in steps of 0.2. Older
+/// settings could hold any speed from 0.5 to 2.0.
+pub fn snap_speed(speed: f32) -> f32 {
+    if !speed.is_finite() {
+        return 1.0;
+    }
+    let tenths = 10.0 + ((speed.clamp(1.0, 2.0) - 1.0) * 5.0).round() * 2.0;
+    tenths / 10.0
 }
 
 /// Persist settings to disk.
@@ -209,5 +225,27 @@ pub fn has_api_key(provider: Provider) -> bool {
         _ => get_api_key(provider)
             .map(|k| !k.trim().is_empty())
             .unwrap_or(false),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn speeds_snap_to_the_steps_settings_offers() {
+        assert_eq!(snap_speed(1.4), 1.4);
+        assert_eq!(snap_speed(1.05), 1.0);
+        assert_eq!(snap_speed(1.15), 1.2);
+        assert_eq!(snap_speed(1.75), 1.8);
+        assert_eq!(snap_speed(0.5), 1.0);
+        assert_eq!(snap_speed(3.0), 2.0);
+        assert_eq!(snap_speed(f32::NAN), 1.0);
+    }
+
+    #[test]
+    fn snapped_speeds_save_as_short_decimals() {
+        let json = serde_json::to_string(&snap_speed(1.6)).unwrap();
+        assert_eq!(json, "1.6");
     }
 }

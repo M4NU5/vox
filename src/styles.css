@@ -130,6 +130,12 @@ button.small { padding: 7px 12px; font-size: 13px; }
 }
 .segmented input:focus-visible + span { box-shadow: 0 0 0 3px var(--ring); }
 
+/* Speed steps: one row of six. */
+.segmented.speeds { grid-template-columns: repeat(6, 1fr); gap: 4px; margin-bottom: 0; }
+.segmented.speeds span { padding: 7px 0; font-variant-numeric: tabular-nums; }
+.segmented input:disabled { cursor: not-allowed; }
+.segmented input:disabled + span { opacity: 0.35; }
+
 .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
 .field > span { font-weight: 550; font-size: 13px; }
 .field a { color: var(--brand); text-decoration: none; font-weight: 500; font-size: 12px; }

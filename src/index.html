@@ -159,10 +159,18 @@
       <!-- Playback -->
       <section class="card" id="speed-card">
         <h2>Playback</h2>
-        <label class="field">
+        <div class="field">
           <span>Speed <output id="speed-out">1.0×</output></span>
-          <input type="range" id="speed" min="0.5" max="2" step="0.05" value="1" />
-        </label>
+          <div class="segmented speeds" id="speed">
+            <label><input type="radio" name="speed" value="1.0" /><span>1.0×</span></label>
+            <label><input type="radio" name="speed" value="1.2" /><span>1.2×</span></label>
+            <label><input type="radio" name="speed" value="1.4" /><span>1.4×</span></label>
+            <label><input type="radio" name="speed" value="1.6" /><span>1.6×</span></label>
+            <label><input type="radio" name="speed" value="1.8" /><span>1.8×</span></label>
+            <label><input type="radio" name="speed" value="2.0" /><span>2.0×</span></label>
+          </div>
+          <small id="speed-note" class="key-status" hidden>ElevenLabs reads at 1.2× at most.</small>
+        </div>
         <label class="check">
           <input type="checkbox" id="restore-clipboard" checked />
           <span>Restore my clipboard after reading</span>
