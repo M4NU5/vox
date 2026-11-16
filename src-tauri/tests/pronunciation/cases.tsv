@@ -1,0 +1,230 @@
+id	category	split	text	spoken
+url-01	url	dev	Read the docs at https://docs.rs/serde first.	Read the docs at docs dot R S slash serde first.
+url-02	url	dev	See https://www.example.com for details.	See example dot com for details.
+url-03	url	test	The repo lives at github.com/rust-lang/rust now.	The repo lives at github dot com slash rust lang slash rust now.
+url-04	url	dev	Visit https://wikipedia.org/wiki/Speech_synthesis today.	Visit wikipedia dot org slash wiki slash speech synthesis today.
+url-05	url	dev	Email me at will@example.com tomorrow.	Email me at will at example dot com tomorrow.
+url-06	url	dev	Open http://localhost:3000 in a browser.	Open localhost colon three thousand in a browser.
+url-07	url	dev	The endpoint is api.openai.com/v1/audio/speech today.	The endpoint is A P I dot openai dot com slash V one slash audio slash speech today.
+url-08	url	test	Check https://news.ycombinator.com/item?id=123 later.	Check news dot ycombinator dot com slash item later.
+url-09	url	dev	Download it from https://huggingface.co/models instead.	Download it from huggingface dot co slash models instead.
+url-10	url	dev	Go to www.bbc.co.uk/news now.	Go to B B C dot co dot U K slash news now.
+url-11	url	dev	Our status page is status.example.org these days.	Our status page is status dot example dot org these days.
+url-12	url	dev	The post is at https://example.com/blog/hello-world#comments if you want it.	The post is at example dot com slash blog slash hello world if you want it.
+path-01	path	dev	Edit src/tts/kokoro.rs first.	Edit source slash T T S slash kokoro dot R S first.
+path-02	path	dev	The config is in ~/.config/app/settings.json now.	The config is in home slash dot config slash app slash settings dot json now.
+path-03	path	test	Logs go to /var/log/app.log by default.	Logs go to slash var slash log slash app dot log by default.
+path-04	path	dev	Open C:\Users\Will\Documents\todo.txt now.	Open C drive slash users slash will slash documents slash todo dot T X T now.
+path-05	path	dev	Run ./scripts/build-engine.sh to build it.	Run scripts slash build engine dot S H to build it.
+path-06	path	dev	The binary lands in target/release/my-app after a build.	The binary lands in target slash release slash my app after a build.
+path-07	path	dev	Check package.json for the version.	Check package dot json for the version.
+path-08	path	test	Delete node_modules and reinstall.	Delete node modules and reinstall.
+path-09	path	dev	Add the folder to .gitignore today.	Add the folder to dot git ignore today.
+path-10	path	dev	Read README.md before you start.	Read readme dot M D before you start.
+path-11	path	dev	The tests are in tests/pronunciation/cases.tsv for now.	The tests are in tests slash pronunciation slash cases dot T S V for now.
+path-12	path	dev	Put the file in /usr/local/bin please.	Put the file in slash user slash local slash bin please.
+path-13	path	test	Look at Cargo.toml and Cargo.lock together.	Look at cargo dot toml and cargo dot lock together.
+code-01	code	dev	Call getUserName() to fetch it.	Call get user name to fetch it.
+code-02	code	dev	Set max_chars to 400 for now.	Set max chars to four hundred for now.
+code-03	code	test	The HashMap stores every voice.	The hash map stores every voice.
+code-04	code	dev	Use MAX_CHARS as the limit.	Use max chars as the limit.
+code-05	code	dev	The chunker calls split_sentence_bounds on each paragraph.	The chunker calls split sentence bounds on each paragraph.
+code-06	code	dev	Run npm install, then npm run dev.	Run N P M install, then N P M run dev.
+code-07	code	dev	Set isEnabled = true in the config.	Set is enabled equals true in the config.
+code-08	code	test	The XMLHttpRequest object is old.	The X M L H T T P request object is old.
+code-09	code	dev	Check that count > 0 before dividing.	Check that count is greater than zero before dividing.
+code-10	code	dev	The branch runs only if a == b holds.	The branch runs only if A equals B holds.
+code-11	code	dev	The kokoroVoice field picks the voice.	The kokoro voice field picks the voice.
+code-12	code	dev	Rename parseJSON to parseJson later.	Rename parse JSON to parse JSON later.
+code-13	code	test	The useEffect hook runs after render.	The use effect hook runs after render.
+code-14	code	dev	Set RUST_LOG=debug for more output.	Set rust log equals debug for more output.
+code-15	code	dev	Call reader::speak_text with the text.	Call reader speak text with the text.
+code-16	code	dev	The fetchAllItems method is slow.	The fetch all items method is slow.
+code-17	code	dev	Use the --release flag for speed.	Use the dash dash release flag for speed.
+md-01	markdown	dev	**Note:** this is important.	Note: this is important.
+md-02	markdown	dev	# Getting started	Getting started.
+md-03	markdown	test	Use the `chunk` function here.	Use the chunk function here.
+md-04	markdown	dev	See [the guide](https://example.com/guide) for more.	See the guide for more.
+md-05	markdown	dev	> Quoted text matters.	Quoted text matters.
+md-06	markdown	dev	## Step 2: install the app	Step two: install the app.
+md-07	markdown	dev	This is *really* good.	This is really good.
+md-08	markdown	test	| Name | Score |\n| --- | --- |\n| Ana | 9 |	Name, score. Ana, nine.
+md-09	markdown	dev	- [ ] Write the tests\n- [x] Ship the build	Write the tests. Ship the build.
+md-10	markdown	dev	***Warning***: back up first.	Warning: back up first.
+md-11	markdown	dev	Press <kbd>Ctrl</kbd>+<kbd>C</kbd> to copy.	Press control plus C to copy.
+md-12	markdown	dev	Line one<br>line two.	Line one, line two.
+md-13	markdown	test	This needs a citation[^1] soon.	This needs a citation soon.
+md-14	markdown	dev	__Bold__ and _italic_ words.	Bold and italic words.
+md-15	markdown	dev	Read the ![diagram](img/flow.png) below.	Read the diagram below.
+num-01	number	dev	We sold 1,234 copies.	We sold one thousand two hundred thirty four copies.
+num-02	number	dev	Pi is about 3.14159 in total.	Pi is about three point one four one five nine in total.
+num-03	number	test	It dropped to -5 overnight.	It dropped to minus five overnight.
+num-04	number	dev	She came 1st and he came 22nd.	She came first and he came twenty second.
+num-05	number	dev	About 3/4 of users agreed.	About three quarters of users agreed.
+num-06	number	dev	Growth was 12.5% last year.	Growth was twelve point five percent last year.
+num-07	number	dev	It is 10x faster now.	It is ten times faster now.
+num-08	number	test	This was fixed in #42 yesterday.	This was fixed in number forty two yesterday.
+num-09	number	dev	It takes ~30 seconds.	It takes about thirty seconds.
+num-10	number	dev	Expect 2-3 days for delivery.	Expect two to three days for delivery.
+num-11	number	dev	The world has 8,100,000,000 people.	The world has eight billion one hundred million people.
+num-12	number	dev	The score was 3-1 at half time.	The score was three to one at half time.
+num-13	number	test	About 1.5 million people came.	About one point five million people came.
+num-14	number	dev	We know 7 × 8 = 56 by heart.	We know seven times eight equals fifty six by heart.
+num-15	number	dev	The answer is 0.001 exactly.	The answer is zero point zero zero one exactly.
+num-16	number	dev	Only 5% of tests failed.	Only five percent of tests failed.
+num-17	number	dev	It went up 3.2x this year.	It went up three point two times this year.
+num-18	number	test	The 100th visitor wins.	The hundredth visitor wins.
+num-19	number	dev	Roughly 2,500 people signed.	Roughly two thousand five hundred people signed.
+num-20	number	dev	Half of 1/2 is 1/4.	Half of one half is one quarter.
+date-01	date	dev	It shipped on 2024-03-05.	It shipped on March fifth, twenty twenty four.
+date-02	date	dev	The meeting is on March 5, 2024.	The meeting is on March fifth, twenty twenty four.
+date-03	date	test	She was born in 1999.	She was born in nineteen ninety nine.
+date-04	date	dev	Music from the 1980s is back.	Music from the nineteen eighties is back.
+date-05	date	dev	Let's meet at 3:30 pm today.	Let's meet at three thirty P M today.
+date-06	date	dev	The train leaves at 14:05 sharp.	The train leaves at fourteen oh five sharp.
+date-07	date	dev	It was updated on 12 Jan 2025.	It was updated on the twelfth of January twenty twenty five.
+date-08	date	test	Q3 2024 results are out.	Q three twenty twenty four results are out.
+date-09	date	dev	We are open 9am-5pm on weekdays.	We are open nine A M to five P M on weekdays.
+date-10	date	dev	Back in 2007 we started small.	Back in two thousand seven we started small.
+date-11	date	dev	It is due by Fri, 7 Nov.	It is due by Friday, the seventh of November.
+date-12	date	dev	The FY2025 budget is set.	The F Y twenty twenty five budget is set.
+date-13	date	test	Doors open at 7:00 PM tonight.	Doors open at seven P M tonight.
+date-14	date	dev	The sale ends Dec. 24.	The sale ends December twenty fourth.
+date-15	date	dev	It was built in the 2010s.	It was built in the twenty tens.
+money-01	money	dev	It costs $5 today.	It costs five dollars today.
+money-02	money	dev	Rent is $1,200 a month.	Rent is one thousand two hundred dollars a month.
+money-03	money	test	Coffee is $3.50 here.	Coffee is three dollars fifty here.
+money-04	money	dev	Tickets are £20 each.	Tickets are twenty pounds each.
+money-05	money	dev	The fine was €150 in total.	The fine was one hundred fifty euros in total.
+money-06	money	dev	They raised $2.5M in funding.	They raised two point five million dollars in funding.
+money-07	money	dev	Her salary is $120k now.	Her salary is one hundred twenty thousand dollars now.
+money-08	money	test	The ramen was ¥1000 there.	The ramen was one thousand yen there.
+money-09	money	dev	The stickers are 99p each.	The stickers are ninety nine pence each.
+money-10	money	dev	The app costs $0.99 to buy.	The app costs ninety nine cents to buy.
+money-11	money	dev	She found a $5 bill outside.	She found a five dollar bill outside.
+money-12	money	dev	Revenue hit $3.2 billion this year.	Revenue hit three point two billion dollars this year.
+money-13	money	test	They spent £1.5bn on it.	They spent one point five billion pounds on it.
+version-01	version	dev	Upgrade to v1.2.3 today.	Upgrade to version one point two point three today.
+version-02	version	dev	Node 18.17.0 is required.	Node eighteen point seventeen point zero is required.
+version-03	version	test	It was released in version 2.0 last year.	It was released in version two point zero last year.
+version-04	version	dev	Tauri 2 is stable now.	Tauri two is stable now.
+version-05	version	dev	The new sherpa-onnx 1.13.8 adds Whisper.	The new sherpa onnx one point thirteen point eight adds Whisper.
+version-06	version	dev	Python 3.12 is out.	Python three point twelve is out.
+version-07	version	dev	This was fixed in v0.2.0-beta.1 already.	This was fixed in version zero point two point zero beta one already.
+version-08	version	test	It requires iOS 17.4 or later.	It requires I O S seventeen point four or later.
+version-09	version	dev	Try 1.0.0-rc.2 first.	Try one point zero point zero R C two first.
+version-10	version	dev	Windows 11 24H2 broke it.	Windows eleven twenty four H two broke it.
+version-11	version	dev	Chrome 120+ supports it.	Chrome one hundred twenty plus supports it.
+version-12	version	dev	Bump it to v2 next week.	Bump it to version two next week.
+unit-01	unit	dev	I run 5km every day.	I run five kilometers every day.
+unit-02	unit	dev	The file is 10 MB in size.	The file is ten megabytes in size.
+unit-03	unit	test	It has a 3.5GHz processor.	It has a three point five gigahertz processor.
+unit-04	unit	dev	Latency is 200ms on average.	Latency is two hundred milliseconds on average.
+unit-05	unit	dev	It is 25°C outside.	It is twenty five degrees Celsius outside.
+unit-06	unit	dev	He is 6ft tall.	He is six feet tall.
+unit-07	unit	dev	It weighs 100 kg in total.	It weighs one hundred kilograms in total.
+unit-08	unit	test	Get 16GB of RAM at least.	Get sixteen gigabytes of RAM at least.
+unit-09	unit	dev	The limit is 60 mph here.	The limit is sixty miles per hour here.
+unit-10	unit	dev	Drink 2L of water a day.	Drink two liters of water a day.
+unit-11	unit	dev	It comes with a 1 TB drive.	It comes with a one terabyte drive.
+unit-12	unit	dev	It takes 5 min to boot.	It takes five minutes to boot.
+unit-13	unit	test	The flight took 2h 30m in total.	The flight took two hours thirty minutes in total.
+unit-14	unit	dev	We get 100 Mbps at home.	We get one hundred megabits per second at home.
+unit-15	unit	dev	The battery holds 50 kWh of charge.	The battery holds fifty kilowatt hours of charge.
+unit-16	unit	dev	The tolerance is ±0.5 mm here.	The tolerance is plus or minus zero point five millimeters here.
+unit-17	unit	dev	The image is only 1 MB now.	The image is only one megabyte now.
+unit-18	unit	test	It is 30 cm wide.	It is thirty centimeters wide.
+abbr-01	abbrev	dev	Bring fruit, e.g. apples or pears.	Bring fruit, for example apples or pears.
+abbr-02	abbrev	dev	Use the main branch, i.e. master.	Use the main branch, that is master.
+abbr-03	abbrev	test	Pens, paper, etc. are provided.	Pens, paper, et cetera are provided.
+abbr-04	abbrev	dev	It was Python vs. Rust again.	It was Python versus Rust again.
+abbr-05	abbrev	dev	Dr. Smith will see you now.	Doctor Smith will see you now.
+abbr-06	abbrev	dev	Mr. and Mrs. Jones arrived late.	Mister and Missus Jones arrived late.
+abbr-07	abbrev	dev	It holds approx. 300 people.	It holds approximately three hundred people.
+abbr-08	abbrev	test	Coffee w/ milk, toast w/o butter.	Coffee with milk, toast without butter.
+abbr-09	abbrev	dev	See Fig. 3 for details.	See figure three for details.
+abbr-10	abbrev	dev	Cf. the earlier result.	Compare the earlier result.
+abbr-11	abbrev	dev	Bob, aka the builder, is here.	Bob, also known as the builder, is here.
+abbr-12	abbrev	dev	The shop is 5 mins away.	The shop is five minutes away.
+abbr-13	abbrev	test	Lots of info, incl. prices, is online.	Lots of info, including prices, is online.
+abbr-14	abbrev	dev	Ask for No. 5 at the bar.	Ask for number five at the bar.
+abbr-15	abbrev	dev	She has a Ph.D. in physics.	She has a P H D in physics.
+abbr-16	abbrev	dev	Prices rose in the U.S. last year.	Prices rose in the U S last year.
+abbr-17	abbrev	dev	Use the newer API, viz. version two.	Use the newer A P I, namely version two.
+abbr-18	abbrev	test	It works on Linux, macOS, etc.	It works on Linux, mac O S, et cetera.
+acro-01	acronym	dev	The API returns JSON.	The A P I returns JSON.
+acro-02	acronym	dev	Our IT team fixed it.	Our I T team fixed it.
+acro-03	acronym	test	The US economy grew.	The U S economy grew.
+acro-04	acronym	dev	Show your ID at the door.	Show your I D at the door.
+acro-05	acronym	dev	Use SSH to connect.	Use S S H to connect.
+acro-06	acronym	dev	The CPU and GPU are busy.	The C P U and G P U are busy.
+acro-07	acronym	dev	Encode it as UTF-8 please.	Encode it as U T F eight please.
+acro-08	acronym	test	Open a PR against master.	Open a P R against master.
+acro-09	acronym	dev	We use AWS and GCP.	We use A W S and G C P.
+acro-10	acronym	dev	NASA launched it last week.	NASA launched it last week.
+acro-11	acronym	dev	Turn on HTTPS for the site.	Turn on H T T P S for the site.
+acro-12	acronym	dev	The LLM wrote a SQL query.	The L L M wrote a S Q L query.
+acro-13	acronym	test	Add CI to the repo.	Add C I to the repo.
+acro-14	acronym	dev	Check the FAQ first.	Check the F A Q first.
+acro-15	acronym	dev	Review the open PRs today.	Review the open PRs today.
+acro-16	acronym	dev	The TTS engine runs locally.	The T T S engine runs locally.
+acro-17	acronym	dev	The URL was wrong.	The U R L was wrong.
+acro-18	acronym	test	Run it in WSL first.	Run it in W S L first.
+emoji-01	emoji	dev	Great job 🎉	Great job.
+emoji-02	emoji	dev	Shipped it 🚀🚀	Shipped it.
+emoji-03	emoji	test	👍 looks good to me	Looks good to me.
+emoji-04	emoji	dev	I love it ❤️	I love it.
+emoji-05	emoji	dev	Build passed ✅	Build passed.
+emoji-06	emoji	dev	Warning ⚠️ the disk is full.	Warning, the disk is full.
+emoji-07	emoji	dev	😂 that is funny	That is funny.
+emoji-08	emoji	test	Coffee ☕ comes first.	Coffee comes first.
+emoji-09	emoji	dev	Nice work 👏🏽 team	Nice work team.
+emoji-10	emoji	dev	Fixed 🐛 in the parser.	Fixed in the parser.
+sym-01	symbol	dev	• First item	First item.
+sym-02	symbol	dev	Step one → step two	Step one to step two.
+sym-03	symbol	test	Tom & Jerry is on.	Tom and Jerry is on.
+sym-04	symbol	dev	Wait… what?	Wait, what?
+sym-05	symbol	dev	The sum is 5 + 3.	The sum is five plus three.
+sym-06	symbol	dev	Rock — paper — scissors.	Rock, paper, scissors.
+sym-07	symbol	dev	Use the @mentions feature.	Use the at mentions feature.
+sym-08	symbol	test	✓ Done	Done.
+sym-09	symbol	dev	© 2025 Acme Inc.	Copyright twenty twenty five Acme Incorporated.
+sym-10	symbol	dev	See § 4 for details.	See section four for details.
+sym-11	symbol	dev	It varies by ± 2 degrees.	It varies by plus or minus two degrees.
+sym-12	symbol	dev	Pick one and/or both.	Pick one and or both.
+sym-13	symbol	test	We offer 24/7 support.	We offer twenty four seven support.
+sym-14	symbol	dev	It is a 50/50 chance.	It is a fifty fifty chance.
+sym-15	symbol	dev	“Hello,” she said.	Hello, she said.
+sym-16	symbol	dev	1. Install it\n2. Run it	One. Install it. Two. Run it.
+sym-17	symbol	dev	◦ Nested point	Nested point.
+sym-18	symbol	test	Options: A | B | C	Options: A, B, C.
+mix-01	mixed	fresh	Bumped tokio to 1.38.0 in Cargo.toml, see #812.	Bumped tokio to one point thirty eight point zero in cargo dot toml, see number eight hundred twelve.
+mix-02	mixed	fresh	The p99 latency dropped from 450ms to 120ms after the fix 🎉	The P ninety nine latency dropped from four hundred fifty milliseconds to one hundred twenty milliseconds after the fix.
+mix-03	mixed	fresh	**TL;DR:** use `serde_json::from_str` instead.	T L D R: use serde JSON from str instead.
+mix-04	mixed	fresh	Our AWS bill went from $4,200 to $3.1k last month.	Our A W S bill went from four thousand two hundred dollars to three point one thousand dollars last month.
+mix-05	mixed	fresh	Docs live at https://tauri.app/start/prerequisites/ for now.	Docs live at tauri dot app slash start slash prerequisites for now.
+mix-06	mixed	fresh	It needs ~2GB of VRAM, i.e. most GPUs from 2020 onwards.	It needs about two gigabytes of V RAM, that is most GPUs from twenty twenty onwards.
+mix-07	mixed	fresh	Ping me on Slack @will if the CI fails again.	Ping me on slack at will if the C I fails again.
+mix-08	mixed	fresh	The meeting moved to Tue, 18 Nov at 2:15 pm.	The meeting moved to Tuesday, the eighteenth of November at two fifteen P M.
+mix-09	mixed	fresh	Set OPENAI_API_KEY in your .env file first.	Set open A I A P I key in your dot env file first.
+mix-10	mixed	fresh	- Fixed the off-by-one in chunk()\n- Added 12 tests	Fixed the off by one in chunk. Added twelve tests.
+mix-11	mixed	fresh	Revenue grew 18% YoY to £2.4bn.	Revenue grew eighteen percent year over year to two point four billion pounds.
+mix-12	mixed	fresh	The README.md says to run npm ci first.	The readme dot M D says to run N P M C I first.
+mix-13	mixed	fresh	Check ~/Library/Logs/app.log on macOS.	Check home slash library slash logs slash app dot log on mac O S.
+mix-14	mixed	fresh	It runs at 60fps on a 4K display.	It runs at sixty frames per second on a four K display.
+mix-15	mixed	fresh	We shipped v3.0 on 2025-01-15, two weeks late.	We shipped version three point zero on January fifteenth, twenty twenty five, two weeks late.
+mix-16	mixed	fresh	> Note: the API rate limit is 100 req/min.	Note: the A P I rate limit is one hundred requests per minute.
+mix-17	mixed	fresh	The isReady flag flips once loadModel() returns.	The is ready flag flips once load model returns.
+mix-18	mixed	fresh	Dr. Patel's team (approx. 40 people) moved to Leeds.	Doctor Patel's team, approximately forty people, moved to Leeds.
+mix-19	mixed	fresh	See Section 3.2 of the RFC for details.	See section three point two of the R F C for details.
+mix-20	mixed	fresh	It costs $15/month or $150/year.	It costs fifteen dollars a month or one hundred fifty dollars a year.
+mix-21	mixed	fresh	The SSD reads at 7,000 MB/s.	The S S D reads at seven thousand megabytes per second.
+mix-22	mixed	fresh	Use Ctrl+Shift+P → "Reload Window".	Use control shift P, then reload window.
+mix-23	mixed	fresh	Python 3.13 drops support for macOS 10.12.	Python three point thirteen drops support for mac O S ten point twelve.
+mix-24	mixed	fresh	We hit 1M downloads in Q2 👏	We hit one million downloads in Q two.
+mix-25	mixed	fresh	The HTTP 404 page links to /help/faq.	The H T T P four oh four page links to slash help slash F A Q.
+mix-26	mixed	fresh	Thanks to everyone who joined — see you at 9:30am!	Thanks to everyone who joined, see you at nine thirty A M!
+mix-27	mixed	fresh	The temp sensor read 38.5°C at 3 a.m.	The temp sensor read thirty eight point five degrees Celsius at three A M.
+mix-28	mixed	fresh	Merge PR #23 before the v0.3 release, etc.	Merge P R number twenty three before the version zero point three release, et cetera.
+mix-29	mixed	fresh	The CEO's 5-year plan targets 10x growth.	The C E O's five year plan targets ten times growth.
+mix-30	mixed	fresh	Files over 25 MB go to s3://bucket-name/uploads.	Files over twenty five megabytes go to S three bucket name slash uploads.

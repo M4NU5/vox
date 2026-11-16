@@ -10,6 +10,7 @@ use tauri_plugin_notification::NotificationExt;
 
 use crate::chunker;
 use crate::latency::{self, Stage, TraceId};
+use crate::normalise;
 use crate::player::Player;
 use crate::reading::{Outcome, Reading, Slot};
 use crate::settings::Settings;
@@ -159,6 +160,12 @@ pub fn speak_text(app: &AppHandle, settings: &Settings, text: &str, trace: Trace
         notify(app, "Voxtray", "No text was selected.");
         return;
     }
+    // Spell out URLs, numbers, code and so on for the English local voices.
+    let normalised = normalise::applies(settings).then(|| normalise::normalise(text));
+    let text = match normalised.as_deref() {
+        Some(n) if !n.trim().is_empty() => n,
+        _ => text,
+    };
 
     // Stop whatever is currently playing (any engine) before starting anew.
     let generation = stop_all(app);

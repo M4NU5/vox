@@ -5,6 +5,7 @@ mod commands;
 mod download;
 mod latency;
 mod logging;
+pub mod normalise;
 mod pill;
 mod player;
 mod reader;

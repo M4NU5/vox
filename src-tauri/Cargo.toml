@@ -47,6 +47,8 @@ reqwest = { version = "0.12", default-features = false, features = ["blocking", 
 
 # Unicode (UAX #29) sentence boundaries for splitting text into chunks.
 unicode-segmentation = "1"
+# Rule-based text normalisation before chunking (see src/normalise.rs).
+regex = "1"
 
 # Checks every downloaded voice, engine and model against its pinned hash.
 sha2 = "0.10"
