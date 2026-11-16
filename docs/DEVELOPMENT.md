@@ -102,6 +102,52 @@ check every chunk was ready before real-time playback needed it. Set
 `VOXTRAY_RENDER_TEXT` and `VOXTRAY_RENDER_WAV` as well, and run them with
 `--release --nocapture`. `VOXTRAY_RENDER_SPEED` sets Kokoro's speed.
 
+## Pronunciation eval
+
+Before a reading is chunked, `src-tauri/src/normalise.rs` rewrites text into
+the words an English Kokoro or Piper voice should say: URLs, paths, code
+identifiers, markdown, numbers, dates, money, versions, units, abbreviations,
+symbols and emoji. Acronyms are left alone: Kokoro already spells out words in
+capitals. It is rule-based. The cloud voices and the system voice don't use
+it.
+
+`src-tauri/tests/pronunciation` measures it. `cases.tsv` holds about 230
+tricky inputs, each with the spoken form a careful human reader would use.
+`eval.py` reads every case through the normaliser, synthesises it with the
+real `voxtray-engine` (Kokoro, voice `af_heart`), transcribes the audio with
+Whisper large-v3-turbo through sherpa-onnx, and reports the word error rate
+overall, per category, and for the worst cases.
+
+You need [uv](https://docs.astral.sh/uv/) and about 1.5 GB of disk. The first
+run downloads the Kokoro and Whisper archives, checks them against the SHA-256
+pinned in `eval.py`, and builds the engine. Audio and transcripts are cached in
+`~/.cache/voxtray-eval` (`VOXTRAY_EVAL_CACHE` moves it), so later runs only
+redo the cases whose normalised text changed.
+
+```bash
+cd src-tauri
+uv run tests/pronunciation/eval.py                  # dev split, normaliser on
+uv run tests/pronunciation/eval.py --raw            # baseline, no normaliser
+uv run tests/pronunciation/eval.py --off units      # without one rule group
+uv run tests/pronunciation/eval.py --split test     # the held-out cases
+uv run tests/pronunciation/eval.py --json out.json  # per-case results
+```
+
+A full run takes a few minutes on a fast CPU, most of it in Whisper.
+
+The `split` column keeps the number honest. Tune the normaliser against the
+`dev` cases only. About a fifth of the single-feature cases are `test`, and
+the `fresh` cases are realistic mixed snippets written before any tuning.
+Score both only when you are done. A change is worth keeping when it lowers the dev
+WER and makes sense for text outside the set. Don't add a rule for one case.
+
+The scorer puts the expected form and Whisper's transcript into one canonical
+form before comparing them: Whisper's own English normaliser, digits compared
+one by one, and Whisper's symbols turned back into the words that make it
+write them (`$5`, `API`, `kokoro.rs`). It never sees the input text. Whisper
+still mishears some proper nouns (Kokoro, Tauri), which sets a floor that no
+normaliser can get under.
+
 ## Build installers
 
 ```bash
@@ -126,6 +172,7 @@ voxtray/
 │   │   ├── lib.rs           # app setup, tray, hotkeys, plugins
 │   │   ├── settings.rs      # config file + OS keychain
 │   │   ├── reader.rs        # capture selection → speak; hotkey actions
+│   │   ├── normalise.rs     # text → words to say (URLs, numbers, code…)
 │   │   ├── chunker.rs       # text → sentence-sized chunks
 │   │   ├── reading.rs       # one reading: synthesis ahead, pause, skip, stop
 │   │   ├── timeline.rs      # decoded PCM + play cursor (rodio source)
