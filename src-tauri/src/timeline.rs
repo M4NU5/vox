@@ -8,10 +8,12 @@
 
 use std::io::Cursor;
 use std::sync::atomic::{AtomicU32, Ordering};
-use std::sync::{Arc, Condvar, Mutex};
+use std::sync::{Arc, Condvar, Mutex, OnceLock};
 use std::time::Duration;
 
 use rodio::{Decoder, Source};
+
+use crate::latency::TraceId;
 
 /// Samples copied per lock of the timeline. About 20 ms of mono speech, which
 /// bounds how long a pause or skip takes to be heard.
@@ -247,11 +249,22 @@ pub struct Shared {
     pub changed: Condvar,
     /// The loudness of the block playing now, 0 to 1, as `f32` bits.
     level: AtomicU32,
+    /// The read whose first sound this reading reports.
+    trace: OnceLock<TraceId>,
 }
 
 impl Shared {
     pub fn new() -> Arc<Shared> {
         Arc::new(Shared::default())
+    }
+
+    /// Report this reading's first sound to read `id`'s trace.
+    pub fn set_trace(&self, id: TraceId) {
+        let _ = self.trace.set(id);
+    }
+
+    pub fn trace(&self) -> TraceId {
+        self.trace.get().copied().unwrap_or(TraceId::NONE)
     }
 
     pub fn with<T>(&self, f: impl FnOnce(&mut Timeline) -> T) -> T {
@@ -319,7 +332,10 @@ impl TimelineSource {
         drop(t);
         self.pos = 0;
         let level = match block {
-            Block::Audio { .. } => loudness(&self.buf),
+            Block::Audio { .. } => {
+                crate::latency::first_sound(self.shared.trace());
+                loudness(&self.buf)
+            }
             Block::Silence { .. } | Block::End => 0.0,
         };
         self.shared.level.store(level.to_bits(), Ordering::Relaxed);

@@ -16,6 +16,7 @@ use voxtray_engine::{kokoro_lexicon, Client};
 
 use super::warm::KeepWarm;
 use crate::download;
+use crate::latency::{self, Stage, TraceId};
 use crate::settings::Settings;
 use crate::timeline::Pcm;
 
@@ -29,6 +30,51 @@ static IDLE: KeepWarm<Loaded> = KeepWarm::new("Kokoro engine", KEEP_WARM);
 struct Loaded {
     client: Client,
     lexicon: &'static str,
+}
+
+impl Loaded {
+    /// Still running, with the lexicon `voice` needs.
+    fn fits(&self, voice: &str) -> bool {
+        self.lexicon == kokoro_lexicon(voice) && self.client.is_running()
+    }
+}
+
+/// Held while taking the warm engine or starting one, so a reading and an
+/// early start never both start an engine.
+fn opening() -> std::sync::MutexGuard<'static, ()> {
+    static OPENING: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    OPENING.lock().unwrap_or_else(|e| e.into_inner())
+}
+
+/// Start an engine ahead of a likely reading, unless a fitting one is warm.
+/// It loads the model in the background and waits, warm, for the reading.
+/// Never downloads the model.
+pub fn prepare(settings: &Settings) {
+    if !download::kokoro_model_installed() {
+        return;
+    }
+    if let (Ok(exe), Ok(model)) = (engine_exe(), download::kokoro_model_dir()) {
+        prepare_local(&exe, &model, &settings.kokoro_voice);
+    }
+}
+
+/// [`prepare`], with the engine and model given.
+pub fn prepare_local(exe: &Path, model: &Path, voice: &str) {
+    let _one_at_a_time = opening();
+    if IDLE.holds(|loaded| loaded.fits(voice)) {
+        return;
+    }
+    // Stops an engine with the other lexicon.
+    drop(IDLE.take());
+    log::info!("starting the Kokoro engine early");
+    match Engine::spawn(exe, model, voice, 1.0) {
+        // Dropping it keeps it warm.
+        Ok(engine) => drop(engine),
+        Err(e) => log::warn!(
+            "early Kokoro start failed: {}",
+            crate::logging::loggable(&e)
+        ),
+    }
 }
 
 /// A running Kokoro engine that synthesises one chunk at a time. Dropping it
@@ -47,9 +93,6 @@ impl Engine {
     /// needed and start an engine, returning before the model has loaded;
     /// the first chunk waits for it.
     pub fn open(app: &AppHandle, settings: &Settings) -> Result<Engine, String> {
-        if let Some(engine) = Engine::reuse(&settings.kokoro_voice, settings.speed) {
-            return Ok(engine);
-        }
         let exe = engine_exe()?;
         if !download::kokoro_model_installed() {
             crate::reader::notify(
@@ -59,7 +102,19 @@ impl Engine {
             );
         }
         let model = download::ensure_kokoro_model(app)?;
-        Engine::spawn(&exe, &model, &settings.kokoro_voice, settings.speed)
+        Engine::open_local(&exe, &model, &settings.kokoro_voice, settings.speed)
+    }
+
+    /// The warm engine if there is one, otherwise a new one from `exe`.
+    pub fn open_local(exe: &Path, model: &Path, voice: &str, speed: f32) -> Result<Engine, String> {
+        let _one_at_a_time = opening();
+        match Engine::reuse(voice, speed) {
+            Some(engine) => {
+                log::info!("Kokoro engine still warm");
+                Ok(engine)
+            }
+            None => Engine::spawn(exe, model, voice, speed),
+        }
     }
 
     pub fn spawn(exe: &Path, model: &Path, voice: &str, speed: f32) -> Result<Engine, String> {
@@ -77,10 +132,9 @@ impl Engine {
     /// loaded the lexicon `voice` needs. Otherwise it is stopped.
     fn reuse(voice: &str, speed: f32) -> Option<Engine> {
         let loaded = IDLE.take()?;
-        if loaded.lexicon != kokoro_lexicon(voice) || !loaded.client.is_running() {
+        if !loaded.fits(voice) {
             return None;
         }
-        log::info!("Kokoro engine still warm");
         Some(Engine::new(loaded, voice, speed))
     }
 
@@ -93,10 +147,16 @@ impl Engine {
         }
     }
 
-    pub fn synthesize(&mut self, text: &str) -> Result<Pcm, String> {
+    /// Speak `text`, marking its stages on read `trace`'s timing.
+    pub fn synthesize(&mut self, text: &str, trace: TraceId) -> Result<Pcm, String> {
         let loaded = self.loaded.as_mut().expect("only taken on drop");
+        let ready = loaded.client.ready().map(|_| ());
+        self.failed |= ready.is_err();
+        ready?;
+        latency::mark(trace, Stage::Ready);
         let wav = loaded.client.synthesize(text, &self.voice, self.speed);
         self.failed |= wav.is_err();
+        latency::mark(trace, Stage::Synth);
         Pcm::decode(wav?)
     }
 }
@@ -109,6 +169,12 @@ impl Drop for Engine {
             }
         }
     }
+}
+
+/// Stop the warm engine, so the next reading starts a cold one.
+#[cfg(test)]
+pub fn forget_warm_engine() {
+    drop(IDLE.take());
 }
 
 /// The engine binary: `VOXTRAY_ENGINE_EXE` if set (for development),
@@ -149,24 +215,27 @@ mod tests {
     #[ignore = "needs voxtray-engine and the Kokoro model"]
     fn warm_engine_synthesises_chunks_in_order() {
         let mut engine = engine();
-        let short = engine.synthesize("Hi.").unwrap();
+        let short = engine.synthesize("Hi.", TraceId::NONE).unwrap();
         let long = engine
-            .synthesize("This sentence is a good deal longer than that.")
+            .synthesize(
+                "This sentence is a good deal longer than that.",
+                TraceId::NONE,
+            )
             .unwrap();
         assert_eq!((short.channels, short.sample_rate), (1, 24_000));
         assert!(long.duration() > short.duration());
-        assert!(engine.synthesize("...").is_ok());
+        assert!(engine.synthesize("...", TraceId::NONE).is_ok());
     }
 
     #[test]
     #[ignore = "needs voxtray-engine and the Kokoro model"]
     fn a_dropped_engine_is_reused_while_warm() {
         let mut engine = engine();
-        engine.synthesize("Hi.").unwrap();
+        engine.synthesize("Hi.", TraceId::NONE).unwrap();
         drop(engine);
         let mut again = Engine::reuse("af_bella", 1.2).expect("still warm");
         assert_eq!((again.voice.as_str(), again.speed), ("af_bella", 1.2));
-        again.synthesize("Hello again.").unwrap();
+        again.synthesize("Hello again.", TraceId::NONE).unwrap();
         drop(again);
         // A British voice needs the other lexicon, so it gets a new engine.
         assert!(Engine::reuse("bf_emma", 1.0).is_none());
@@ -185,7 +254,7 @@ mod tests {
         let (tx, rx) = std::sync::mpsc::channel();
         let reading = Reading::start(
             vec![long.to_string(); 3],
-            move |chunk| engine.synthesize(chunk),
+            move |chunk| engine.synthesize(chunk, TraceId::NONE),
             interrupt,
             move |_: &Reading, outcome| tx.send(outcome).unwrap(),
         );
@@ -194,6 +263,6 @@ mod tests {
         let outcome = rx.recv_timeout(std::time::Duration::from_secs(60));
         assert_eq!(outcome, Ok(Outcome::Stopped));
         let mut again = Engine::reuse("af_heart", 1.0).expect("still warm after stop");
-        again.synthesize("Still here.").unwrap();
+        again.synthesize("Still here.", TraceId::NONE).unwrap();
     }
 }

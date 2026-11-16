@@ -13,6 +13,7 @@ mod warm;
 
 use std::process::Command;
 
+use crate::latency::{self, Stage, TraceId};
 use crate::settings::{Provider, Settings};
 use crate::timeline::Pcm;
 use tauri::AppHandle;
@@ -37,13 +38,17 @@ impl ChunkEngine {
         })
     }
 
-    pub fn synthesize(&mut self, text: &str) -> Result<Pcm, String> {
-        match self {
+    /// Speak `text`, marking its stages on read `trace`'s timing.
+    pub fn synthesize(&mut self, text: &str, trace: TraceId) -> Result<Pcm, String> {
+        let pcm = match self {
             ChunkEngine::Piper(e) => e.synthesize(text),
-            ChunkEngine::Kokoro(e) => e.synthesize(text),
+            ChunkEngine::Kokoro(e) => e.synthesize(text, trace),
             ChunkEngine::Openai(c) => c.synthesize(text),
             ChunkEngine::Elevenlabs(c) => c.synthesize(text),
-        }
+        };
+        // Kokoro marks this itself, before decoding.
+        latency::mark(trace, Stage::Synth);
+        pcm
     }
 
     /// Something that interrupts a synthesis in progress, if the engine can.
@@ -54,6 +59,14 @@ impl ChunkEngine {
             ChunkEngine::Piper(e) => Some(Box::new(e.killer())),
             _ => None,
         }
+    }
+}
+
+/// Get the engine for `settings` ready ahead of a likely reading. Only Kokoro
+/// has a slow start worth hiding.
+pub fn prepare(settings: &Settings) {
+    if settings.provider == Provider::Kokoro {
+        kokoro::prepare(settings);
     }
 }
 

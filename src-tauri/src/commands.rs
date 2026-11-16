@@ -182,8 +182,9 @@ pub fn stop_playback(app: AppHandle) {
 #[tauri::command]
 pub fn test_voice(app: AppHandle, settings: Settings) -> Result<(), String> {
     // Run off the UI thread; starting an engine can take a moment.
+    let trace = crate::latency::start(std::time::Instant::now());
     std::thread::spawn(move || {
-        reader::speak_text(&app, &settings, SAMPLE_TEXT);
+        reader::speak_text(&app, &settings, SAMPLE_TEXT, trace);
     });
     Ok(())
 }

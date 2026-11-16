@@ -585,7 +585,7 @@ mod tests {
             let speed = std::env::var("VOXTRAY_RENDER_SPEED").map_or(1.0, |s| s.parse().unwrap());
             let mut engine =
                 Engine::spawn(&engine_exe().unwrap(), model.as_ref(), "af_heart", speed).unwrap();
-            move |chunk: &str| engine.synthesize(chunk)
+            move |chunk: &str| engine.synthesize(chunk, crate::latency::TraceId::NONE)
         });
     }
 }

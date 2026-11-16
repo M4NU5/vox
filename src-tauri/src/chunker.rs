@@ -2,7 +2,7 @@
 //!
 //! Chunks never cross a paragraph break. The first chunk is a single sentence,
 //! cut at a clause mark if it is longer than [`FIRST_CHARS`], so audio starts
-//! quickly. Chunks then ramp up: each is at most [`RAMP`] times the one before,
+//! quickly. With no clause mark that early, it is cut at the next one. Chunks then ramp up: each is at most [`RAMP`] times the one before,
 //! so it is ready before that one finishes playing. While ramping, a sentence
 //! that is too long is cut at a clause mark, never mid-phrase. Once at
 //! [`TARGET_CHARS`], sentences in a paragraph are merged up to it for fewer
@@ -15,9 +15,10 @@ use unicode_segmentation::UnicodeSegmentation;
 
 /// Sentences in a paragraph are merged until a chunk would exceed this.
 pub const TARGET_CHARS: usize = 220;
-/// A first sentence longer than this is cut at a clause mark. Kokoro takes
-/// about 1 s to synthesise it on a fast CPU.
-pub const FIRST_CHARS: usize = 100;
+/// A first sentence longer than this is cut at a clause mark, so the first
+/// audio is ready sooner. Warm Kokoro takes about 0.35 s for 36 chars and
+/// 0.6 s for 85 on a fast CPU.
+pub const FIRST_CHARS: usize = 60;
 /// Each chunk is at most this many times the length of the one before. Kokoro
 /// synthesises about 5 times faster than real time on a fast CPU, so 3 leaves
 /// room for 1.5x speed.
@@ -51,7 +52,15 @@ pub fn chunk(text: &str) -> Vec<String> {
                     }
                     // Cut a sentence too long for this step of the ramp.
                     if current.is_empty() && len(&piece) > ramp {
-                        if let Some(at) = clause_cut(&piece, limit) {
+                        // With no clause mark early enough, the first chunk
+                        // ends at the next one rather than the sentence end.
+                        let cut = clause_cut(&piece, limit).or_else(|| {
+                            chunks
+                                .is_empty()
+                                .then(|| next_clause_cut(&piece, limit))
+                                .flatten()
+                        });
+                        if let Some(at) = cut {
                             chunks.push(piece[..at].to_string());
                             piece = piece[at..].trim_start().to_string();
                             continue;
@@ -209,12 +218,21 @@ fn clause_cut(s: &str, max: usize) -> Option<usize> {
     let (head, min) = window(s, max);
     head.char_indices()
         .rev()
-        .find(|&(i, c)| {
-            i >= min
-                && matches!(c, ',' | ';' | ':' | '—' | '–' | ')')
-                && s[i + c.len_utf8()..].starts_with(' ')
-        })
+        .find(|&(i, c)| i >= min && is_clause_mark(c) && s[i + c.len_utf8()..].starts_with(' '))
         .map(|(i, c)| i + c.len_utf8())
+}
+
+/// Where to cut `s` just after the first clause mark past `min` chars that
+/// is followed by a space. None if there isn't one.
+fn next_clause_cut(s: &str, min: usize) -> Option<usize> {
+    s.char_indices()
+        .skip(min)
+        .find(|&(i, c)| is_clause_mark(c) && s[i + c.len_utf8()..].starts_with(' '))
+        .map(|(i, c)| i + c.len_utf8())
+}
+
+fn is_clause_mark(c: char) -> bool {
+    matches!(c, ',' | ';' | ':' | '—' | '–' | ')')
 }
 
 /// The first `max` chars of `s`, and the byte index a third of the way in.
@@ -288,6 +306,29 @@ mod tests {
         let c = chunk(&s);
         assert_eq!(len(&c[0]), FIRST_CHARS);
         assert!(c[0].ends_with(','));
+    }
+
+    #[test]
+    fn a_short_first_sentence_is_cut_at_its_comma() {
+        let c = chunk(
+            "The library closes early on Fridays, so please return your books before four o'clock.",
+        );
+        assert_eq!(
+            c,
+            vec![
+                "The library closes early on Fridays,",
+                "so please return your books before four o'clock."
+            ]
+        );
+    }
+
+    #[test]
+    fn a_first_sentence_with_only_a_late_clause_mark_is_cut_there() {
+        let head = ["word"; 30].join(" ");
+        let c = chunk(&format!("{head}, and then the rest of it. Next one."));
+        assert_eq!(c[0], format!("{head},"));
+        assert!(len(&c[0]) > FIRST_CHARS);
+        assert!(c[1].starts_with("and then"));
     }
 
     #[test]
