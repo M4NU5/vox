@@ -59,6 +59,15 @@ pub enum Input {
     Mouse,
 }
 
+/// What a sequence of inputs means so far.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Signal {
+    /// The key went down with nothing else held: a tap may follow.
+    Press,
+    /// The key was tapped.
+    Tap,
+}
+
 /// Decides when a sequence of inputs is a tap of `key`.
 #[derive(Default)]
 pub struct Tap {
@@ -77,29 +86,31 @@ impl Tap {
         };
     }
 
-    /// Feed one input. True when it completes a tap. `others_held` reports
-    /// whether any other key or mouse button is down; it is only asked when
-    /// the key goes down.
-    pub fn feed(&mut self, input: Input, others_held: impl FnOnce() -> bool) -> bool {
+    /// Feed one input. Returns [`Signal::Tap`] when it completes a tap, and
+    /// [`Signal::Press`] when it starts a press that may become one.
+    /// `others_held` reports whether any other key or mouse button is down;
+    /// it is only asked when the key goes down.
+    pub fn feed(&mut self, input: Input, others_held: impl FnOnce() -> bool) -> Option<Signal> {
         if self.key == 0 {
-            return false;
+            return None;
         }
         match input {
             Input::Down(vk, at) if vk == self.key => {
                 // Auto-repeat sends more downs while held; only the first counts.
-                if self.down_at.is_none() {
-                    self.down_at = Some(at);
-                    self.spoiled = others_held();
+                if self.down_at.is_some() {
+                    return None;
                 }
-                false
+                self.down_at = Some(at);
+                self.spoiled = others_held();
+                (!self.spoiled).then_some(Signal::Press)
             }
-            Input::Up(vk, at) if vk == self.key => match self.down_at.take() {
-                Some(down) => !self.spoiled && at.wrapping_sub(down) <= TAP_MAX_MS,
-                None => false,
-            },
+            Input::Up(vk, at) if vk == self.key => {
+                let down = self.down_at.take()?;
+                (!self.spoiled && at.wrapping_sub(down) <= TAP_MAX_MS).then_some(Signal::Tap)
+            }
             Input::Down(..) | Input::Up(..) | Input::Mouse => {
                 self.spoiled |= self.down_at.is_some();
-                false
+                None
             }
         }
     }
@@ -124,7 +135,7 @@ pub use hook::{set_key, start};
 
 #[cfg(windows)]
 mod hook {
-    use super::{Input, Tap};
+    use super::{Input, Signal, Tap};
     use std::ptr::{null, null_mut};
     use std::sync::mpsc::{self, Sender};
     use std::sync::{Mutex, OnceLock};
@@ -143,7 +154,7 @@ mod hook {
         down_at: None,
         spoiled: false,
     });
-    static SINK: OnceLock<Sender<()>> = OnceLock::new();
+    static SINK: OnceLock<Sender<Signal>> = OnceLock::new();
 
     /// Use the key with setting id `id`, or none if it's empty or unknown.
     pub fn set_key(id: &str) {
@@ -152,24 +163,28 @@ mod hook {
         lock().set_key(vk);
     }
 
-    /// Read (or pause) on each tap.
+    /// Read (or pause) on each tap. Get the engine ready as the key goes
+    /// down, so a cold one starts loading while the selection is copied.
     pub fn start(app: AppHandle) -> Result<(), String> {
-        install(move || {
-            log::info!("read key tapped");
-            crate::reader::trigger_read(&app);
+        install(move |signal| match signal {
+            Signal::Press => crate::reader::prepare(&app),
+            Signal::Tap => {
+                log::info!("read key tapped");
+                crate::reader::trigger_read(&app);
+            }
         })
     }
 
     /// Install the hooks on their own thread, which pumps messages for them.
-    /// `on_tap` runs on another thread, since the hooks must return quickly.
-    /// Once per process.
-    pub fn install(on_tap: impl Fn() + Send + 'static) -> Result<(), String> {
-        let (tx, taps) = mpsc::channel();
+    /// `on_signal` runs on another thread, since the hooks must return
+    /// quickly. Once per process.
+    pub fn install(on_signal: impl Fn(Signal) + Send + 'static) -> Result<(), String> {
+        let (tx, signals) = mpsc::channel();
         SINK.set(tx)
             .map_err(|_| "the tap key is already installed")?;
         std::thread::Builder::new()
             .name("tap-key".into())
-            .spawn(move || taps.iter().for_each(|()| on_tap()))
+            .spawn(move || signals.iter().for_each(on_signal))
             .map_err(|e| e.to_string())?;
 
         let (ready, installed) = mpsc::channel();
@@ -209,10 +224,9 @@ mod hook {
     }
 
     fn feed(input: Input, held_except: u16) {
-        if lock().feed(input, || others_held(held_except)) {
-            if let Some(sink) = SINK.get() {
-                let _ = sink.send(());
-            }
+        let signal = lock().feed(input, || others_held(held_except));
+        if let (Some(signal), Some(sink)) = (signal, SINK.get()) {
+            let _ = sink.send(signal);
         }
     }
 
@@ -282,9 +296,12 @@ mod tests {
         tap
     }
 
-    /// Feed inputs with nothing else held; true if any completed a tap.
+    /// Feed inputs with nothing else held; true for each that completed a tap.
     fn run(tap: &mut Tap, inputs: &[Input]) -> Vec<bool> {
-        inputs.iter().map(|&i| tap.feed(i, || false)).collect()
+        inputs
+            .iter()
+            .map(|&i| tap.feed(i, || false) == Some(Signal::Tap))
+            .collect()
     }
 
     #[test]
@@ -368,8 +385,18 @@ mod tests {
     #[test]
     fn a_press_with_another_key_already_held_is_not_a_tap() {
         let mut t = tap();
-        assert!(!t.feed(Input::Down(RCTRL, 1000), || true));
-        assert!(!t.feed(Input::Up(RCTRL, 1100), || false));
+        assert_eq!(t.feed(Input::Down(RCTRL, 1000), || true), None);
+        assert_eq!(t.feed(Input::Up(RCTRL, 1100), || false), None);
+    }
+
+    #[test]
+    fn a_clean_press_signals_once_before_the_tap() {
+        let mut t = tap();
+        let held = || false;
+        assert_eq!(t.feed(Input::Down(RCTRL, 1000), held), Some(Signal::Press));
+        assert_eq!(t.feed(Input::Down(RCTRL, 1030), held), None, "auto-repeat");
+        assert_eq!(t.feed(Input::Up(RCTRL, 1100), held), Some(Signal::Tap));
+        assert_eq!(t.feed(Input::Down(C, 1200), held), None, "another key");
     }
 
     #[test]
@@ -478,7 +505,12 @@ mod desktop_tests {
     #[ignore = "injects key presses into the Windows desktop"]
     fn the_hook_reads_on_a_real_tap_only() {
         let (tx, taps) = mpsc::channel();
-        super::hook::install(move || tx.send(()).unwrap()).unwrap();
+        super::hook::install(move |signal| {
+            if signal == super::Signal::Tap {
+                tx.send(()).unwrap();
+            }
+        })
+        .unwrap();
         super::set_key("rightCtrl");
 
         send(&[press(VK_RCONTROL, false), press(VK_RCONTROL, true)]);

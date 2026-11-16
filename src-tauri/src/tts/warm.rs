@@ -36,6 +36,12 @@ impl<T: Send + 'static> KeepWarm<T> {
         self.lock().value.take()
     }
 
+    /// Whether a value is held and `ok` accepts it. Doesn't restart its
+    /// idle time.
+    pub fn holds(&self, ok: impl FnOnce(&T) -> bool) -> bool {
+        self.lock().value.as_ref().is_some_and(ok)
+    }
+
     /// Keep `value` for the next reading, in place of any value already held.
     pub fn put(&'static self, value: T) {
         let (old, generation) = {
@@ -101,6 +107,16 @@ mod tests {
         warm.put(Probe(1, drops.clone()));
         assert_eq!(warm.take().map(|p| p.0), Some(1));
         assert!(warm.take().is_none());
+    }
+
+    #[test]
+    fn holds_peeks_without_taking() {
+        let (warm, drops) = keep(60_000);
+        assert!(!warm.holds(|_| true));
+        warm.put(Probe(1, drops.clone()));
+        assert!(warm.holds(|p| p.0 == 1));
+        assert!(!warm.holds(|p| p.0 == 2));
+        assert_eq!(warm.take().map(|p| p.0), Some(1));
     }
 
     #[test]

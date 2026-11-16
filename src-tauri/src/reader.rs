@@ -26,12 +26,16 @@ pub struct AppState {
 /// How long released modifiers get to settle before the copy shortcut.
 const MODIFIER_SETTLE: Duration = Duration::from_millis(60);
 
+/// How often the clipboard is checked for the copied selection.
+const POLL: Duration = Duration::from_millis(10);
+
 /// Simulate the platform copy shortcut so the focused app copies its selection.
 ///
 /// Because the read hotkey (e.g. Ctrl+Alt+R) is usually still physically held
 /// when this runs, we first send key-up for every modifier to neutralise the
 /// OS modifier state — otherwise a stray Alt/Shift turns our synthetic Ctrl+C
-/// into Ctrl+Alt+C and nothing gets copied.
+/// into Ctrl+Alt+C and nothing gets copied. After a tap of the read key
+/// nothing is held, so that step and its wait are skipped.
 fn simulate_copy() -> Result<(), String> {
     let mut enigo = Enigo::new(&EnigoSettings::default()).map_err(|e| e.to_string())?;
 
@@ -41,10 +45,12 @@ fn simulate_copy() -> Result<(), String> {
     let modifier = Key::Control;
 
     // Release any modifiers the user is still holding from the hotkey.
-    for k in [Key::Alt, Key::Shift, Key::Control, Key::Meta] {
-        let _ = enigo.key(k, Direction::Release);
+    if modifiers_held() {
+        for k in [Key::Alt, Key::Shift, Key::Control, Key::Meta] {
+            let _ = enigo.key(k, Direction::Release);
+        }
+        std::thread::sleep(MODIFIER_SETTLE);
     }
-    std::thread::sleep(MODIFIER_SETTLE);
 
     enigo
         .key(modifier, Direction::Press)
@@ -56,6 +62,36 @@ fn simulate_copy() -> Result<(), String> {
         .key(modifier, Direction::Release)
         .map_err(|e| e.to_string())?;
     Ok(())
+}
+
+/// Whether Alt, Shift or Windows is down, any of which would turn our Ctrl+C
+/// into another shortcut. A held Ctrl is fine: we press it anyway.
+#[cfg(windows)]
+fn modifiers_held() -> bool {
+    use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
+        GetAsyncKeyState, VK_LWIN, VK_MENU, VK_RWIN, VK_SHIFT,
+    };
+    [VK_SHIFT, VK_MENU, VK_LWIN, VK_RWIN]
+        .iter()
+        .any(|&k| unsafe { GetAsyncKeyState(i32::from(k)) } as u16 & 0x8000 != 0)
+}
+
+/// Elsewhere there's no cheap check, so always release them.
+#[cfg(not(windows))]
+fn modifiers_held() -> bool {
+    true
+}
+
+/// The clipboard's change counter. Reading it doesn't open the clipboard,
+/// so polling it can't get in the way of the app writing the selection.
+#[cfg(windows)]
+fn clipboard_sequence() -> Option<u32> {
+    Some(unsafe { windows_sys::Win32::System::DataExchange::GetClipboardSequenceNumber() })
+}
+
+#[cfg(not(windows))]
+fn clipboard_sequence() -> Option<u32> {
+    None
 }
 
 /// Capture the currently-selected text by copying it to the clipboard.
@@ -77,17 +113,21 @@ fn capture_with(
 
     // Sentinel so we can detect whether the copy produced anything.
     let _ = clipboard.set_text(String::new());
-    // Small delay so the emptied clipboard settles before we send copy.
-    std::thread::sleep(Duration::from_millis(40));
+    let cleared = clipboard_sequence();
 
     copy()?;
 
     // Poll the clipboard: apps service the copy command asynchronously, and
     // slower ones (browsers, Electron apps) can take several hundred ms.
+    // Where the change counter exists, the clipboard is only opened once it
+    // has moved.
     let mut text = String::new();
     let deadline = Instant::now() + Duration::from_millis(1200);
     while Instant::now() < deadline {
-        std::thread::sleep(Duration::from_millis(40));
+        std::thread::sleep(POLL);
+        if cleared.is_some() && clipboard_sequence() == cleared {
+            continue;
+        }
         if let Ok(t) = clipboard.get_text() {
             if !t.is_empty() {
                 text = t;
@@ -215,18 +255,30 @@ pub fn trigger_read(app: &AppHandle) {
     read_selection(app);
 }
 
+/// A read may be about to start: get a local engine loading in the
+/// background, so it's ready sooner. Does nothing mid-reading, when the read
+/// key pauses instead.
+pub fn prepare(app: &AppHandle) {
+    if active_reading(app).is_none() {
+        let settings = current_settings(app);
+        std::thread::spawn(move || tts::prepare(&settings));
+    }
+}
+
+fn current_settings(app: &AppHandle) -> Settings {
+    let state: tauri::State<AppState> = app.state();
+    let settings = state.settings.lock().map(|g| g.clone());
+    settings.unwrap_or_default()
+}
+
 /// Capture the selection and read it. Runs the slow work on a worker thread.
 pub fn read_selection(app: &AppHandle) {
     latency::start(Instant::now());
+    // The engine loads while the selection is copied.
+    prepare(app);
     let app = app.clone();
     std::thread::spawn(move || {
-        let state: tauri::State<AppState> = app.state();
-        let settings = {
-            match state.settings.lock() {
-                Ok(g) => g.clone(),
-                Err(_) => Settings::default(),
-            }
-        };
+        let settings = current_settings(&app);
 
         let captured = capture_selection(settings.restore_clipboard);
         if let Ok(text) = &captured {
@@ -282,8 +334,9 @@ pub fn trigger_stop(app: &AppHandle) {
 }
 
 /// Time to first sound through the real pieces: clipboard, chunker, Kokoro
-/// engine, reading worker and audio output. Only the app answering Ctrl+C
-/// is simulated. Plays a moment of each reading on the default device.
+/// engine, reading worker and audio output. Only the key presses and the app
+/// answering Ctrl+C are simulated. Plays a moment of each reading on the
+/// default device, and puts the clipboard's text back after each.
 ///
 /// Needs `VOXTRAY_ENGINE_EXE` and `VOXTRAY_KOKORO_MODEL`. Run with
 /// `cargo test --lib first_sound -- --ignored --nocapture --test-threads 1`.
@@ -292,7 +345,7 @@ mod first_sound {
     use super::*;
     use crate::latency::Report;
     use crate::reading::Outcome;
-    use crate::tts::kokoro::{self, engine_exe};
+    use crate::tts::kokoro;
     use std::path::PathBuf;
     use std::sync::mpsc;
 
@@ -314,9 +367,10 @@ the halyards ringing against the masts.";
     const APP_COPY: Duration = Duration::from_millis(15);
     /// How long the read key is held for a tap.
     const TAP: Duration = Duration::from_millis(90);
+    const VOICE: &str = "af_heart";
 
-    fn model() -> PathBuf {
-        PathBuf::from(std::env::var_os("VOXTRAY_KOKORO_MODEL").expect("set VOXTRAY_KOKORO_MODEL"))
+    fn path(var: &str) -> PathBuf {
+        PathBuf::from(std::env::var_os(var).unwrap_or_else(|| panic!("set {var}")))
     }
 
     fn player() -> &'static Player {
@@ -324,14 +378,24 @@ the halyards ringing against the masts.";
         PLAYER.get_or_init(Player::new)
     }
 
-    /// One read of `text`, from key-down to the first sample played.
+    /// One read of `text`, from the read key going down to the first sample
+    /// played. The report counts from the key coming up, as the app does.
     fn read(text: &'static str) -> Report {
-        let (exe, model) = (engine_exe().unwrap(), model());
+        let (exe, model) = (path("VOXTRAY_ENGINE_EXE"), path("VOXTRAY_KOKORO_MODEL"));
+        // As the read key going down, then read_selection, do.
+        let prepare = || {
+            let (exe, model) = (exe.clone(), model.clone());
+            std::thread::spawn(move || kokoro::prepare_local(&exe, &model, VOICE));
+        };
+        prepare();
         std::thread::sleep(TAP);
         latency::start(Instant::now());
+        prepare();
         let copy = move || {
             // As simulate_copy does, without sending keys.
-            std::thread::sleep(MODIFIER_SETTLE);
+            if modifiers_held() {
+                std::thread::sleep(MODIFIER_SETTLE);
+            }
             std::thread::spawn(move || {
                 std::thread::sleep(APP_COPY);
                 Clipboard::new().unwrap().set_text(text).unwrap();
@@ -343,8 +407,8 @@ the halyards ringing against the masts.";
         latency::mark(Stage::Capture);
 
         // As speak_text does.
-        let mut engine =
-            ChunkEngine::Kokoro(kokoro::Engine::open_local(&exe, &model, "af_heart", 1.0).unwrap());
+        let engine = kokoro::Engine::open_local(&exe, &model, VOICE, 1.0).unwrap();
+        let mut engine = ChunkEngine::Kokoro(engine);
         latency::mark(Stage::Open);
         let chunks = chunker::chunk(text);
         latency::mark(Stage::Chunk);
@@ -381,14 +445,14 @@ the halyards ringing against the masts.";
         v[v.len() / 2]
     }
 
-    /// Runs `n` reads and prints the median of each stage.
+    /// Reads `text` `n` times and prints the median of the total and of each
+    /// stage. Warm reads follow a short read on a fresh engine; cold reads
+    /// start with no engine running.
     fn measure(name: &str, text: &'static str, cold: bool, n: usize) {
         let reports: Vec<Report> = (0..n)
             .map(|_| {
-                if cold {
-                    kokoro::forget_warm_engine();
-                } else {
-                    // Make sure the engine is loaded and has synthesised once.
+                kokoro::forget_warm_engine();
+                if !cold {
                     let _ = read("Warm up.");
                 }
                 let r = read(text);
@@ -396,7 +460,7 @@ the halyards ringing against the masts.";
                 r
             })
             .collect();
-        let stages = [
+        let parts: Vec<String> = [
             Stage::Capture,
             Stage::Open,
             Stage::Chunk,
@@ -404,14 +468,13 @@ the halyards ringing against the masts.";
             Stage::Synth,
             Stage::Decode,
             Stage::Play,
-        ];
-        let parts: Vec<String> = stages
-            .iter()
-            .map(|&s| {
-                let ms = median(reports.iter().map(|r| r.stage(s).as_millis()).collect());
-                format!("{s:?} {ms}")
-            })
-            .collect();
+        ]
+        .iter()
+        .map(|&s| {
+            let ms = median(reports.iter().map(|r| r.stage(s).as_millis()).collect());
+            format!("{s:?} {ms}")
+        })
+        .collect();
         let total = median(reports.iter().map(|r| r.total.as_millis()).collect());
         println!("MEDIAN {name}: total {total} ms | {}", parts.join(", "));
     }
@@ -420,14 +483,13 @@ the halyards ringing against the masts.";
     #[ignore = "needs voxtray-engine, the Kokoro model, a clipboard and speakers"]
     fn first_sound_timings() {
         let n: usize = std::env::var("VOXTRAY_RUNS").map_or(5, |s| s.parse().unwrap());
-        let first = chunker::chunk(LONG)[0].chars().count();
-        println!(
-            "short {} chars, long first chunk {first} chars",
-            SHORT.chars().count()
-        );
+        for text in [SHORT, LONG] {
+            let first = chunker::chunk(text)[0].chars().count();
+            println!("{} chars, first chunk {first}", text.chars().count());
+        }
         measure("short warm", SHORT, false, n);
         measure("long warm", LONG, false, n);
-        measure("short cold", SHORT, true, n.min(3));
-        measure("long cold", LONG, true, n.min(3));
+        measure("short cold", SHORT, true, n);
+        measure("long cold", LONG, true, n);
     }
 }

@@ -60,6 +60,14 @@ impl ChunkEngine {
     }
 }
 
+/// Get the engine for `settings` ready ahead of a likely reading. Only Kokoro
+/// has a slow start worth hiding.
+pub fn prepare(settings: &Settings) {
+    if settings.provider == Provider::Kokoro {
+        kokoro::prepare(settings);
+    }
+}
+
 /// Keep a local engine from opening a console window on Windows.
 fn hide_console(cmd: &mut Command) {
     #[cfg(windows)]

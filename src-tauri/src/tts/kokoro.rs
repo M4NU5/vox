@@ -32,6 +32,51 @@ struct Loaded {
     lexicon: &'static str,
 }
 
+impl Loaded {
+    /// Still running, with the lexicon `voice` needs.
+    fn fits(&self, voice: &str) -> bool {
+        self.lexicon == kokoro_lexicon(voice) && self.client.is_running()
+    }
+}
+
+/// Held while taking the warm engine or starting one, so a reading and an
+/// early start never both start an engine.
+fn opening() -> std::sync::MutexGuard<'static, ()> {
+    static OPENING: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    OPENING.lock().unwrap_or_else(|e| e.into_inner())
+}
+
+/// Start an engine ahead of a likely reading, unless a fitting one is warm.
+/// It loads the model in the background and waits, warm, for the reading.
+/// Never downloads the model.
+pub fn prepare(settings: &Settings) {
+    if !download::kokoro_model_installed() {
+        return;
+    }
+    if let (Ok(exe), Ok(model)) = (engine_exe(), download::kokoro_model_dir()) {
+        prepare_local(&exe, &model, &settings.kokoro_voice);
+    }
+}
+
+/// [`prepare`], with the engine and model given.
+pub fn prepare_local(exe: &Path, model: &Path, voice: &str) {
+    let _one_at_a_time = opening();
+    if IDLE.holds(|loaded| loaded.fits(voice)) {
+        return;
+    }
+    // Stops an engine with the other lexicon.
+    drop(IDLE.take());
+    log::info!("starting the Kokoro engine early");
+    match Engine::spawn(exe, model, voice, 1.0) {
+        // Dropping it keeps it warm.
+        Ok(engine) => drop(engine),
+        Err(e) => log::warn!(
+            "early Kokoro start failed: {}",
+            crate::logging::loggable(&e)
+        ),
+    }
+}
+
 /// A running Kokoro engine that synthesises one chunk at a time. Dropping it
 /// keeps the engine warm for the next reading.
 pub struct Engine {
@@ -48,9 +93,6 @@ impl Engine {
     /// needed and start an engine, returning before the model has loaded;
     /// the first chunk waits for it.
     pub fn open(app: &AppHandle, settings: &Settings) -> Result<Engine, String> {
-        if let Some(engine) = Engine::reuse(&settings.kokoro_voice, settings.speed) {
-            return Ok(engine);
-        }
         let exe = engine_exe()?;
         if !download::kokoro_model_installed() {
             crate::reader::notify(
@@ -65,8 +107,12 @@ impl Engine {
 
     /// The warm engine if there is one, otherwise a new one from `exe`.
     pub fn open_local(exe: &Path, model: &Path, voice: &str, speed: f32) -> Result<Engine, String> {
+        let _one_at_a_time = opening();
         match Engine::reuse(voice, speed) {
-            Some(engine) => Ok(engine),
+            Some(engine) => {
+                log::info!("Kokoro engine still warm");
+                Ok(engine)
+            }
             None => Engine::spawn(exe, model, voice, speed),
         }
     }
@@ -86,10 +132,9 @@ impl Engine {
     /// loaded the lexicon `voice` needs. Otherwise it is stopped.
     fn reuse(voice: &str, speed: f32) -> Option<Engine> {
         let loaded = IDLE.take()?;
-        if loaded.lexicon != kokoro_lexicon(voice) || !loaded.client.is_running() {
+        if !loaded.fits(voice) {
             return None;
         }
-        log::info!("Kokoro engine still warm");
         Some(Engine::new(loaded, voice, speed))
     }
 
