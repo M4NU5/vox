@@ -56,9 +56,14 @@ fn move_contents(old: &Path, new: &Path, report: &mut Vec<String>) {
     }
     for entry in entries.flatten() {
         let from = entry.path();
-        // The old log is replaced on every start anyway.
+        // The old log is replaced on every start anyway. WebView2 makes its
+        // new cache before this runs, and the app keeps nothing in it.
         if entry.file_name() == "voxtray.log" {
             let _ = fs::remove_file(&from);
+            continue;
+        }
+        if entry.file_name() == "EBWebView" {
+            let _ = fs::remove_dir_all(&from);
             continue;
         }
         let to = new.join(entry.file_name());
@@ -126,6 +131,8 @@ mod tests {
         fs::create_dir_all(old.join("kokoro")).unwrap();
         fs::write(old.join("settings.json"), "{}").unwrap();
         fs::write(old.join("voxtray.log"), "x").unwrap();
+        fs::create_dir_all(old.join("EBWebView/Default")).unwrap();
+        fs::create_dir_all(new.join("EBWebView")).unwrap();
         fs::write(old.join("kokoro/model.onnx"), "m").unwrap();
 
         let mut report = Vec::new();
@@ -135,6 +142,7 @@ mod tests {
         assert_eq!(fs::read_to_string(new.join("settings.json")).unwrap(), "{}");
         assert_eq!(fs::read_to_string(new.join("kokoro/model.onnx")).unwrap(), "m");
         assert!(!new.join("voxtray.log").exists());
+        assert!(!new.join("EBWebView/Default").exists());
         assert_eq!(report.len(), 2, "{report:?}");
         fs::remove_dir_all(&root).unwrap();
     }
