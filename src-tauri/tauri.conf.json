@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Voxtray",
+  "productName": "Vox",
   "version": "0.2.0",
-  "identifier": "dev.harshal.voxtray",
+  "identifier": "dev.harshal.vox",
   "build": {
     "frontendDist": "../src"
   },
@@ -11,7 +11,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Voxtray",
+        "title": "Vox",
         "width": 520,
         "height": 720,
         "minWidth": 420,

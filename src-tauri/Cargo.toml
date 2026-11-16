@@ -1,5 +1,5 @@
 [package]
-name = "voxtray"
+name = "vox"
 version = "0.2.0"
 description = "Select text in any app, press a hotkey, and have it read aloud."
 authors = ["Harshal"]
@@ -14,7 +14,7 @@ members = ["engine"]
 
 # The library that Tauri links against. `_lib` avoids a name clash with the bin.
 [lib]
-name = "voxtray_lib"
+name = "vox_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
@@ -24,6 +24,9 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = ["tray-icon", "image-png"] }
 tauri-plugin-global-shortcut = "2"
 tauri-plugin-autostart = "2"
+# Removes the old Voxtray login item when moving to the Vox name. Already
+# pulled in by tauri-plugin-autostart.
+auto-launch = "0.5"
 tauri-plugin-notification = "2"
 tauri-plugin-opener = "2"
 
@@ -56,8 +59,8 @@ sha2 = "0.10"
 log = "0.4"
 
 # The engine protocol and client. Kokoro itself runs in the separate
-# voxtray-engine binary, so its backend stays off here.
-voxtray-engine = { path = "engine", default-features = false }
+# vox-engine binary, so its backend stays off here.
+vox-engine = { path = "engine", default-features = false }
 # Unpacking the Kokoro model archive (.tar.bz2). Pure Rust by default.
 bzip2 = "0.6"
 

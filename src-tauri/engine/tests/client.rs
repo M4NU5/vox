@@ -4,7 +4,7 @@
 use std::process::Command;
 use std::time::{Duration, Instant};
 
-use voxtray_engine::Client;
+use vox_engine::Client;
 
 fn fake(name: &str, flags: &[&str]) -> Client {
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_fake-engine"));
@@ -104,14 +104,14 @@ fn stray_lines_on_stdout_are_skipped() {
 
 #[test]
 fn a_missing_engine_fails_to_start() {
-    let cmd = Command::new("voxtray-engine-that-does-not-exist");
+    let cmd = Command::new("vox-engine-that-does-not-exist");
     let err = Client::spawn(cmd, "Gone").err().unwrap();
     assert!(err.starts_with("failed to start the Gone engine"), "{err}");
 }
 
 #[test]
 fn dropping_the_client_removes_its_audio_folder() {
-    let prefix = format!("voxtray-fakedrop-{}-", std::process::id());
+    let prefix = format!("vox-fakedrop-{}-", std::process::id());
     let folders = || {
         std::fs::read_dir(std::env::temp_dir())
             .unwrap()

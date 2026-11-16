@@ -157,7 +157,7 @@ pub fn speak_text(app: &AppHandle, settings: &Settings, text: &str, trace: Trace
     let text = text.trim();
     if text.is_empty() {
         latency::cancel(trace);
-        notify(app, "Voxtray", "No text was selected.");
+        notify(app, "Vox", "No text was selected.");
         return;
     }
     // Spell out URLs, numbers, code and so on for the English local voices.

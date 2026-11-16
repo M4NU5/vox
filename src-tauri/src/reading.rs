@@ -472,7 +472,7 @@ mod tests {
     /// chunk, when its audio was ready versus when real-time playback would
     /// need it. Opening the engine counts towards the first audio.
     ///
-    /// `VOXTRAY_RENDER_TEXT` (input file) and `VOXTRAY_RENDER_WAV` (output)
+    /// `VOX_RENDER_TEXT` (input file) and `VOX_RENDER_WAV` (output)
     /// must be set.
     fn render_passage<O, S>(open: O)
     where
@@ -482,7 +482,7 @@ mod tests {
         use rodio::Source;
         use std::io::Write;
 
-        let text = std::fs::read_to_string(var("VOXTRAY_RENDER_TEXT")).unwrap();
+        let text = std::fs::read_to_string(var("VOX_RENDER_TEXT")).unwrap();
         let chunks = crate::chunker::chunk(&text);
         let n = chunks.len();
 
@@ -521,7 +521,7 @@ mod tests {
         assert_eq!(rx.recv_timeout(WAIT), Ok(Outcome::Finished));
 
         let mut wav =
-            std::io::BufWriter::new(std::fs::File::create(var("VOXTRAY_RENDER_WAV")).unwrap());
+            std::io::BufWriter::new(std::fs::File::create(var("VOX_RENDER_WAV")).unwrap());
         let data_len = (samples.len() * 2) as u32;
         wav.write_all(b"RIFF").unwrap();
         wav.write_all(&(36 + data_len).to_le_bytes()).unwrap();
@@ -561,28 +561,28 @@ mod tests {
         );
     }
 
-    /// Also needs `VOXTRAY_PIPER_EXE` and `VOXTRAY_PIPER_MODEL`.
+    /// Also needs `VOX_PIPER_EXE` and `VOX_PIPER_MODEL`.
     #[test]
     #[ignore = "needs a Piper binary, a voice and a text file"]
     fn render_passage_with_piper() {
         use crate::tts::piper::Engine;
         render_passage(|| {
-            let exe = var("VOXTRAY_PIPER_EXE");
-            let model = var("VOXTRAY_PIPER_MODEL");
+            let exe = var("VOX_PIPER_EXE");
+            let model = var("VOX_PIPER_MODEL");
             let mut engine = Engine::spawn(exe.as_ref(), model.as_ref(), 1.0).unwrap();
             move |chunk: &str| engine.synthesize(chunk)
         });
     }
 
-    /// Also needs `VOXTRAY_ENGINE_EXE` and `VOXTRAY_KOKORO_MODEL`.
-    /// `VOXTRAY_RENDER_SPEED` sets the speed (default 1).
+    /// Also needs `VOX_ENGINE_EXE` and `VOX_KOKORO_MODEL`.
+    /// `VOX_RENDER_SPEED` sets the speed (default 1).
     #[test]
-    #[ignore = "needs voxtray-engine, the Kokoro model and a text file"]
+    #[ignore = "needs vox-engine, the Kokoro model and a text file"]
     fn render_passage_with_kokoro() {
         use crate::tts::kokoro::{engine_exe, Engine};
         render_passage(|| {
-            let model = var("VOXTRAY_KOKORO_MODEL");
-            let speed = std::env::var("VOXTRAY_RENDER_SPEED").map_or(1.0, |s| s.parse().unwrap());
+            let model = var("VOX_KOKORO_MODEL");
+            let speed = std::env::var("VOX_RENDER_SPEED").map_or(1.0, |s| s.parse().unwrap());
             let mut engine =
                 Engine::spawn(&engine_exe().unwrap(), model.as_ref(), "af_heart", speed).unwrap();
             move |chunk: &str| engine.synthesize(chunk, crate::latency::TraceId::NONE)

@@ -1,6 +1,6 @@
 # Third-party notices
 
-Voxtray is MIT licensed. It is built on, or downloads at runtime, the following work. Each keeps its own licence.
+Vox is MIT licensed. It is built on, or downloads at runtime, the following work. Each keeps its own licence.
 
 ## Bundled in the app
 
@@ -18,10 +18,10 @@ The full dependency list with versions is in `src-tauri/Cargo.lock` and `package
 
 ## The Kokoro engine, installed with the app
 
-Voxtray installs a second program next to itself, `voxtray-engine`, which runs the Kokoro voice. They are separate
+Vox installs a second program next to itself, `vox-engine`, which runs the Kokoro voice. They are separate
 programs that talk over standard input and output. The engine's own code, in `src-tauri/engine`, is MIT. It
-statically links espeak-ng, though, so **`voxtray-engine` as shipped falls under the
-[GNU GPL, version 3 or later](https://www.gnu.org/licenses/gpl-3.0.html)**. Voxtray itself contains none of the code
+statically links espeak-ng, though, so **`vox-engine` as shipped falls under the
+[GNU GPL, version 3 or later](https://www.gnu.org/licenses/gpl-3.0.html)**. Vox itself contains none of the code
 below and stays MIT.
 
 Its corresponding source is this repository plus [sherpa-onnx v1.13.8](https://github.com/k2-fsa/sherpa-onnx/tree/v1.13.8),
@@ -40,7 +40,7 @@ whose `cmake/` files pin each upstream version listed here.
 
 ## Downloaded only if you choose that engine
 
-These are not shipped with Voxtray. They are fetched from their official sources the first time you select them.
+These are not shipped with Vox. They are fetched from their official sources the first time you select them.
 
 | Component | Source | Licence |
 | --- | --- | --- |

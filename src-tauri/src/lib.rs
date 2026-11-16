@@ -1,10 +1,11 @@
-//! Voxtray — library entry point wired up by `main.rs`.
+//! Vox — library entry point wired up by `main.rs`.
 
 mod chunker;
 mod commands;
 mod download;
 mod latency;
 mod logging;
+mod migrate;
 pub mod normalise;
 mod pill;
 mod player;
@@ -205,10 +206,15 @@ pub fn run() {
         .setup(|app| {
             let handle = app.handle().clone();
 
-            // Voxtray Dev runs under its own identifier (tauri.dev.conf.json).
+            // Vox Dev runs under its own identifier (tauri.dev.conf.json).
             settings::set_app_id(&app.config().identifier);
+            // Before config_dir() creates this build's folder.
+            let moved = migrate::from_voxtray();
             if let Ok(dir) = settings::config_dir() {
-                logging::init(&dir.join("voxtray.log"));
+                logging::init(&dir.join("vox.log"));
+            }
+            for line in moved {
+                log::info!("rename: {line}");
             }
             log::info!(
                 "{} {} started as {}",
@@ -282,5 +288,5 @@ pub fn run() {
             commands::test_voice,
         ])
         .run(tauri::generate_context!())
-        .expect("error while running Voxtray");
+        .expect("error while running Vox");
 }

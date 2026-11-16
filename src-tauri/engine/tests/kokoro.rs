@@ -1,16 +1,16 @@
 //! The real engine. Tests that need the model are ignored by default: set
-//! `VOXTRAY_KOKORO_MODEL` to an unpacked `kokoro-multi-lang-v1_0` folder and
-//! run `cargo test -p voxtray-engine -- --ignored`.
+//! `VOX_KOKORO_MODEL` to an unpacked `kokoro-multi-lang-v1_0` folder and
+//! run `cargo test -p vox-engine -- --ignored`.
 
 use std::process::Command;
 
-use voxtray_engine::Client;
+use vox_engine::Client;
 
 fn engine(voice: &str) -> Client {
-    let model = std::env::var_os("VOXTRAY_KOKORO_MODEL").expect("set VOXTRAY_KOKORO_MODEL");
-    let mut cmd = Command::new(env!("CARGO_BIN_EXE_voxtray-engine"));
+    let model = std::env::var_os("VOX_KOKORO_MODEL").expect("set VOX_KOKORO_MODEL");
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_vox-engine"));
     cmd.arg("--model-dir").arg(model).args(["--voice", voice]);
-    Client::spawn(cmd, "Kokoro").expect("spawn voxtray-engine")
+    Client::spawn(cmd, "Kokoro").expect("spawn vox-engine")
 }
 
 /// Seconds of audio in a mono 16-bit WAV at 24 kHz.
@@ -68,7 +68,7 @@ fn killing_the_engine_unblocks_synthesis_with_an_error() {
 
 #[test]
 fn a_missing_model_is_reported_at_start() {
-    let mut cmd = Command::new(env!("CARGO_BIN_EXE_voxtray-engine"));
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_vox-engine"));
     cmd.args(["--model-dir", "/nonexistent"]);
     let mut engine = Client::spawn(cmd, "Kokoro").unwrap();
     let err = engine.ready().err().unwrap();

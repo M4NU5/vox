@@ -10,7 +10,7 @@
 use std::io::Write;
 use std::path::PathBuf;
 
-use voxtray_engine::protocol::{self, Backend, Ready, Response};
+use vox_engine::protocol::{self, Backend, Ready, Response};
 
 struct Fake;
 
@@ -55,7 +55,7 @@ fn main() {
         let _ = protocol::send(&mut out, &error);
         std::process::exit(1);
     }
-    if let Some(version) = voxtray_engine::arg(&args, "--protocol") {
+    if let Some(version) = vox_engine::arg(&args, "--protocol") {
         let ready = Ready {
             protocol: version.parse().unwrap(),
             engine: "fake".into(),
@@ -67,7 +67,7 @@ fn main() {
         return;
     }
 
-    let out_dir = PathBuf::from(voxtray_engine::arg(&args, "--out-dir").expect("--out-dir"));
+    let out_dir = PathBuf::from(vox_engine::arg(&args, "--out-dir").expect("--out-dir"));
     let stdin = std::io::stdin();
     protocol::serve(stdin.lock(), out.lock(), &mut Fake, &out_dir).unwrap();
 }

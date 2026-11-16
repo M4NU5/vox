@@ -41,7 +41,7 @@ impl Engine {
     pub fn spawn(exe: &Path, model: &Path, speed: f32) -> Result<Engine, String> {
         let engine_dir = exe.parent().ok_or("engine directory not found")?;
         let out_dir = std::env::temp_dir().join(format!(
-            "voxtray-piper-{}-{}",
+            "vox-piper-{}-{}",
             std::process::id(),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -168,11 +168,11 @@ impl Drop for Engine {
 mod tests {
     use super::*;
 
-    /// The real Piper binary and a voice, from `VOXTRAY_PIPER_EXE` and
-    /// `VOXTRAY_PIPER_MODEL`. Run with `cargo test -- --ignored`.
+    /// The real Piper binary and a voice, from `VOX_PIPER_EXE` and
+    /// `VOX_PIPER_MODEL`. Run with `cargo test -- --ignored`.
     fn engine() -> Engine {
-        let exe = std::env::var_os("VOXTRAY_PIPER_EXE").expect("set VOXTRAY_PIPER_EXE");
-        let model = std::env::var_os("VOXTRAY_PIPER_MODEL").expect("set VOXTRAY_PIPER_MODEL");
+        let exe = std::env::var_os("VOX_PIPER_EXE").expect("set VOX_PIPER_EXE");
+        let model = std::env::var_os("VOX_PIPER_MODEL").expect("set VOX_PIPER_MODEL");
         Engine::spawn(Path::new(&exe), Path::new(&model), 1.0).expect("spawn Piper")
     }
 

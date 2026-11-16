@@ -1,5 +1,5 @@
-//! Voxtray's speech engine protocol, and the host-side client that drives an
-//! engine process with it. The engine itself is the `voxtray-engine` binary.
+//! Vox's speech engine protocol, and the host-side client that drives an
+//! engine process with it. The engine itself is the `vox-engine` binary.
 
 mod client;
 pub mod protocol;

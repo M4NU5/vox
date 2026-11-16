@@ -98,7 +98,7 @@ fn truncate(s: &str, max: usize) -> String {
 
 /// A short probe used by the "Test voice" button.
 pub const SAMPLE_TEXT: &str =
-    "This is a test of Voxtray. Selected text will be read to you like this.";
+    "This is a test of Vox. Selected text will be read to you like this.";
 
 #[cfg(test)]
 mod tests {

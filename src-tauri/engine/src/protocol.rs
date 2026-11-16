@@ -9,7 +9,7 @@
 //! ```text
 //! engine: {"type":"ready","protocol":1,"engine":"kokoro","version":"0.2.0","sample_rate":24000}
 //! host:   {"type":"synthesize","id":1,"text":"Hello.","voice":"af_heart","speed":1.0}
-//! engine: {"type":"result","id":1,"path":"/tmp/voxtray-kokoro-…/1.wav"}
+//! engine: {"type":"result","id":1,"path":"/tmp/vox-kokoro-…/1.wav"}
 //! host:   {"type":"quit"}
 //! ```
 //!
@@ -184,7 +184,7 @@ mod tests {
 
     fn out_dir(name: &str) -> PathBuf {
         let dir =
-            std::env::temp_dir().join(format!("voxtray-protocol-{name}-{}", std::process::id()));
+            std::env::temp_dir().join(format!("vox-protocol-{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         dir
