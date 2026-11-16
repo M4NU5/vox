@@ -3,6 +3,7 @@
 mod chunker;
 mod commands;
 mod download;
+mod latency;
 mod logging;
 mod pill;
 mod player;

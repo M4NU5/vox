@@ -9,6 +9,7 @@ use tauri::{AppHandle, Manager};
 use tauri_plugin_notification::NotificationExt;
 
 use crate::chunker;
+use crate::latency::{self, Stage};
 use crate::player::Player;
 use crate::reading::{Outcome, Reading, Slot};
 use crate::settings::Settings;
@@ -21,6 +22,9 @@ pub struct AppState {
     /// The chunked reading in progress, if any.
     pub reading: Mutex<Slot>,
 }
+
+/// How long released modifiers get to settle before the copy shortcut.
+const MODIFIER_SETTLE: Duration = Duration::from_millis(60);
 
 /// Simulate the platform copy shortcut so the focused app copies its selection.
 ///
@@ -40,7 +44,7 @@ fn simulate_copy() -> Result<(), String> {
     for k in [Key::Alt, Key::Shift, Key::Control, Key::Meta] {
         let _ = enigo.key(k, Direction::Release);
     }
-    std::thread::sleep(Duration::from_millis(60));
+    std::thread::sleep(MODIFIER_SETTLE);
 
     enigo
         .key(modifier, Direction::Press)
@@ -60,6 +64,14 @@ fn simulate_copy() -> Result<(), String> {
 /// "nothing was selected", and the previous contents are restored afterwards
 /// when `restore` is set.
 fn capture_selection(restore: bool) -> Result<String, String> {
+    capture_with(restore, simulate_copy)
+}
+
+/// [`capture_selection`], with `copy` standing in for the copy shortcut.
+fn capture_with(
+    restore: bool,
+    copy: impl FnOnce() -> Result<(), String>,
+) -> Result<String, String> {
     let mut clipboard = Clipboard::new().map_err(|e| format!("clipboard: {e}"))?;
     let previous = clipboard.get_text().ok();
 
@@ -68,7 +80,7 @@ fn capture_selection(restore: bool) -> Result<String, String> {
     // Small delay so the emptied clipboard settles before we send copy.
     std::thread::sleep(Duration::from_millis(40));
 
-    simulate_copy()?;
+    copy()?;
 
     // Poll the clipboard: apps service the copy command asynchronously, and
     // slower ones (browsers, Electron apps) can take several hundred ms.
@@ -102,6 +114,7 @@ pub fn notify(app: &AppHandle, title: &str, body: &str) {
 pub fn speak_text(app: &AppHandle, settings: &Settings, text: &str) {
     let text = text.trim();
     if text.is_empty() {
+        latency::cancel();
         notify(app, "Voxtray", "No text was selected.");
         return;
     }
@@ -118,11 +131,13 @@ pub fn speak_text(app: &AppHandle, settings: &Settings, text: &str) {
     let mut engine = match ChunkEngine::open(app, settings) {
         Some(Ok(engine)) => engine,
         Some(Err(e)) => {
+            latency::cancel();
             crate::pill::failed();
             return notify(app, "Could not read text", &e);
         }
         // The system voice speaks the whole text itself.
         None => {
+            latency::cancel();
             match tts::local::speak(settings, text) {
                 Ok(child) => state.player.set_local_child(child),
                 Err(e) => notify(app, "Could not read text", &e),
@@ -131,11 +146,14 @@ pub fn speak_text(app: &AppHandle, settings: &Settings, text: &str) {
         }
     };
 
+    latency::mark(Stage::Open);
     let interrupt = engine.interrupter();
     let handle = app.clone();
     let start = move || {
+        let chunks = chunker::chunk(text);
+        latency::mark(Stage::Chunk);
         Reading::start(
-            chunker::chunk(text),
+            chunks,
             move |chunk| engine.synthesize(chunk),
             interrupt,
             move |reading, outcome| finished(&handle, reading, outcome),
@@ -155,6 +173,7 @@ pub fn speak_text(app: &AppHandle, settings: &Settings, text: &str) {
         return;
     };
     if let Err(e) = played {
+        latency::cancel();
         reading.stop();
         crate::pill::failed();
         notify(app, "Could not read text", &e);
@@ -171,6 +190,7 @@ fn finished(app: &AppHandle, reading: &Reading, outcome: Outcome) {
     }
     crate::sync_skip_hotkeys(app);
     if let Outcome::Failed(e) = outcome {
+        latency::cancel();
         crate::pill::failed();
         notify(app, "Could not read text", &e);
     }
@@ -197,6 +217,7 @@ pub fn trigger_read(app: &AppHandle) {
 
 /// Capture the selection and read it. Runs the slow work on a worker thread.
 pub fn read_selection(app: &AppHandle) {
+    latency::start(Instant::now());
     let app = app.clone();
     std::thread::spawn(move || {
         let state: tauri::State<AppState> = app.state();
@@ -209,11 +230,15 @@ pub fn read_selection(app: &AppHandle) {
 
         let captured = capture_selection(settings.restore_clipboard);
         if let Ok(text) = &captured {
+            latency::mark(Stage::Capture);
             log::info!("captured {} chars", text.chars().count());
         }
         match captured {
             Ok(text) => speak_text(&app, &settings, &text),
-            Err(e) => notify(&app, "Could not capture selection", &e),
+            Err(e) => {
+                latency::cancel();
+                notify(&app, "Could not capture selection", &e)
+            }
         }
     });
 }
@@ -251,6 +276,158 @@ fn stop_all(app: &AppHandle) -> u64 {
 
 /// Stop any current playback (all engines) and cancel pending synthesis.
 pub fn trigger_stop(app: &AppHandle) {
+    latency::cancel();
     stop_all(app);
     crate::sync_skip_hotkeys(app);
+}
+
+/// Time to first sound through the real pieces: clipboard, chunker, Kokoro
+/// engine, reading worker and audio output. Only the app answering Ctrl+C
+/// is simulated. Plays a moment of each reading on the default device.
+///
+/// Needs `VOXTRAY_ENGINE_EXE` and `VOXTRAY_KOKORO_MODEL`. Run with
+/// `cargo test --lib first_sound -- --ignored --nocapture --test-threads 1`.
+#[cfg(test)]
+mod first_sound {
+    use super::*;
+    use crate::latency::Report;
+    use crate::reading::Outcome;
+    use crate::tts::kokoro::{self, engine_exe};
+    use std::path::PathBuf;
+    use std::sync::mpsc;
+
+    const SHORT: &str =
+        "The library closes early on Fridays, so please return your books before four o'clock.";
+
+    const LONG: &str = "When the old harbour was finally rebuilt after the storm, the town \
+council insisted that the new sea wall follow the line of the original stones, even though \
+the engineers had argued for a straighter and cheaper route. The result is a wall that bends \
+twice before it reaches the lighthouse. Visitors often ask why, and the answer is usually a \
+story about the fishermen who refused to move their boats.
+
+Today the harbour is quieter than it once was. A handful of boats still go out before dawn, \
+but most of the moorings are taken by pleasure craft, and the old fish market has become a \
+café that serves coffee to walkers on the coastal path. On a calm morning you can still hear \
+the halyards ringing against the masts.";
+
+    /// How long the simulated app takes to put the selection on the clipboard.
+    const APP_COPY: Duration = Duration::from_millis(15);
+    /// How long the read key is held for a tap.
+    const TAP: Duration = Duration::from_millis(90);
+
+    fn model() -> PathBuf {
+        PathBuf::from(std::env::var_os("VOXTRAY_KOKORO_MODEL").expect("set VOXTRAY_KOKORO_MODEL"))
+    }
+
+    fn player() -> &'static Player {
+        static PLAYER: std::sync::OnceLock<Player> = std::sync::OnceLock::new();
+        PLAYER.get_or_init(Player::new)
+    }
+
+    /// One read of `text`, from key-down to the first sample played.
+    fn read(text: &'static str) -> Report {
+        let (exe, model) = (engine_exe().unwrap(), model());
+        std::thread::sleep(TAP);
+        latency::start(Instant::now());
+        let copy = move || {
+            // As simulate_copy does, without sending keys.
+            std::thread::sleep(MODIFIER_SETTLE);
+            std::thread::spawn(move || {
+                std::thread::sleep(APP_COPY);
+                Clipboard::new().unwrap().set_text(text).unwrap();
+            });
+            Ok(())
+        };
+        let captured = capture_with(true, copy).unwrap();
+        assert_eq!(captured, text);
+        latency::mark(Stage::Capture);
+
+        // As speak_text does.
+        let mut engine =
+            ChunkEngine::Kokoro(kokoro::Engine::open_local(&exe, &model, "af_heart", 1.0).unwrap());
+        latency::mark(Stage::Open);
+        let chunks = chunker::chunk(text);
+        latency::mark(Stage::Chunk);
+        let (tx, rx) = mpsc::channel();
+        let reading = Reading::start(
+            chunks,
+            move |chunk| engine.synthesize(chunk),
+            None,
+            move |_: &Reading, outcome| tx.send(outcome).unwrap(),
+        );
+        player().play_timeline(reading.shared.clone()).unwrap();
+
+        let deadline = Instant::now() + Duration::from_secs(60);
+        let report = loop {
+            if let Some(r) = latency::last() {
+                break r;
+            }
+            assert!(Instant::now() < deadline, "no sound");
+            std::thread::sleep(Duration::from_millis(2));
+        };
+        std::thread::sleep(Duration::from_millis(250));
+        reading.stop();
+        player().stop();
+        // The engine goes back to warm once its chunk in progress is done.
+        assert_eq!(
+            rx.recv_timeout(Duration::from_secs(60)),
+            Ok(Outcome::Stopped)
+        );
+        report
+    }
+
+    fn median(mut v: Vec<u128>) -> u128 {
+        v.sort_unstable();
+        v[v.len() / 2]
+    }
+
+    /// Runs `n` reads and prints the median of each stage.
+    fn measure(name: &str, text: &'static str, cold: bool, n: usize) {
+        let reports: Vec<Report> = (0..n)
+            .map(|_| {
+                if cold {
+                    kokoro::forget_warm_engine();
+                } else {
+                    // Make sure the engine is loaded and has synthesised once.
+                    let _ = read("Warm up.");
+                }
+                let r = read(text);
+                println!("  {name}: {r}");
+                r
+            })
+            .collect();
+        let stages = [
+            Stage::Capture,
+            Stage::Open,
+            Stage::Chunk,
+            Stage::Ready,
+            Stage::Synth,
+            Stage::Decode,
+            Stage::Play,
+        ];
+        let parts: Vec<String> = stages
+            .iter()
+            .map(|&s| {
+                let ms = median(reports.iter().map(|r| r.stage(s).as_millis()).collect());
+                format!("{s:?} {ms}")
+            })
+            .collect();
+        let total = median(reports.iter().map(|r| r.total.as_millis()).collect());
+        println!("MEDIAN {name}: total {total} ms | {}", parts.join(", "));
+    }
+
+    #[test]
+    #[ignore = "needs voxtray-engine, the Kokoro model, a clipboard and speakers"]
+    fn first_sound_timings() {
+        let n: usize = std::env::var("VOXTRAY_RUNS").map_or(5, |s| s.parse().unwrap());
+        let first = chunker::chunk(LONG)[0].chars().count();
+        println!(
+            "short {} chars, long first chunk {first} chars",
+            SHORT.chars().count()
+        );
+        measure("short warm", SHORT, false, n);
+        measure("long warm", LONG, false, n);
+        measure("short cold", SHORT, true, n.min(3));
+        measure("long cold", LONG, true, n.min(3));
+    }
 }

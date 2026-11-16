@@ -16,6 +16,7 @@ use voxtray_engine::{kokoro_lexicon, Client};
 
 use super::warm::KeepWarm;
 use crate::download;
+use crate::latency::{self, Stage};
 use crate::settings::Settings;
 use crate::timeline::Pcm;
 
@@ -59,7 +60,15 @@ impl Engine {
             );
         }
         let model = download::ensure_kokoro_model(app)?;
-        Engine::spawn(&exe, &model, &settings.kokoro_voice, settings.speed)
+        Engine::open_local(&exe, &model, &settings.kokoro_voice, settings.speed)
+    }
+
+    /// The warm engine if there is one, otherwise a new one from `exe`.
+    pub fn open_local(exe: &Path, model: &Path, voice: &str, speed: f32) -> Result<Engine, String> {
+        match Engine::reuse(voice, speed) {
+            Some(engine) => Ok(engine),
+            None => Engine::spawn(exe, model, voice, speed),
+        }
     }
 
     pub fn spawn(exe: &Path, model: &Path, voice: &str, speed: f32) -> Result<Engine, String> {
@@ -95,8 +104,13 @@ impl Engine {
 
     pub fn synthesize(&mut self, text: &str) -> Result<Pcm, String> {
         let loaded = self.loaded.as_mut().expect("only taken on drop");
+        let ready = loaded.client.ready().map(|_| ());
+        self.failed |= ready.is_err();
+        ready?;
+        latency::mark(Stage::Ready);
         let wav = loaded.client.synthesize(text, &self.voice, self.speed);
         self.failed |= wav.is_err();
+        latency::mark(Stage::Synth);
         Pcm::decode(wav?)
     }
 }
@@ -109,6 +123,12 @@ impl Drop for Engine {
             }
         }
     }
+}
+
+/// Stop the warm engine, so the next reading starts a cold one.
+#[cfg(test)]
+pub fn forget_warm_engine() {
+    drop(IDLE.take());
 }
 
 /// The engine binary: `VOXTRAY_ENGINE_EXE` if set (for development),

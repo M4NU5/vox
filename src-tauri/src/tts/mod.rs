@@ -38,12 +38,15 @@ impl ChunkEngine {
     }
 
     pub fn synthesize(&mut self, text: &str) -> Result<Pcm, String> {
-        match self {
+        let pcm = match self {
             ChunkEngine::Piper(e) => e.synthesize(text),
             ChunkEngine::Kokoro(e) => e.synthesize(text),
             ChunkEngine::Openai(c) => c.synthesize(text),
             ChunkEngine::Elevenlabs(c) => c.synthesize(text),
-        }
+        };
+        // Kokoro marks this itself, before decoding.
+        crate::latency::mark(crate::latency::Stage::Synth);
+        pcm
     }
 
     /// Something that interrupts a synthesis in progress, if the engine can.

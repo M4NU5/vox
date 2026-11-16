@@ -98,7 +98,11 @@ impl Reading {
                             String::new()
                         }
                     );
-                    self.shared.with(|t| t.push(pcm));
+                    self.shared.with(|t| {
+                        // Before the audio thread can see it.
+                        crate::latency::mark(crate::latency::Stage::Decode);
+                        t.push(pcm)
+                    });
                 }
                 Err(e) => {
                     self.shared.with(|t| t.complete());

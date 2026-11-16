@@ -319,7 +319,10 @@ impl TimelineSource {
         drop(t);
         self.pos = 0;
         let level = match block {
-            Block::Audio { .. } => loudness(&self.buf),
+            Block::Audio { .. } => {
+                crate::latency::first_sound();
+                loudness(&self.buf)
+            }
             Block::Silence { .. } | Block::End => 0.0,
         };
         self.shared.level.store(level.to_bits(), Ordering::Relaxed);
