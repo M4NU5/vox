@@ -110,11 +110,13 @@ pub fn start(at: Instant) -> TraceId {
     static NEXT: AtomicU64 = AtomicU64::new(1);
     let id = TraceId(NEXT.fetch_add(1, Ordering::Relaxed));
     lock(&LAST).take();
-    *lock(&TRACE) = Some(Trace {
+    let mut trace = lock(&TRACE);
+    *trace = Some(Trace {
         id,
         started: at,
         marks: Vec::new(),
     });
+    // Under the lock, so two starts can't leave OPEN naming the other.
     OPEN.store(id.0, Ordering::Release);
     id
 }
