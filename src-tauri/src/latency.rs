@@ -1,7 +1,8 @@
 //! Time to first sound: from the read trigger to the first sample handed to
-//! the audio device. One trace runs at a time. [`start`] opens it, [`mark`]
-//! records the first time each stage happens, and the first audio played
-//! closes it with one log line, for example:
+//! the audio device. One trace runs at a time. [`start`] opens it and
+//! returns its id, [`mark`] records the first time each stage of that read
+//! happens, and its first audio played closes it with one log line, for
+//! example:
 //!
 //! ```text
 //! first sound 812 ms: capture 160, open 2, chunk 0, ready 0, synth 627, decode 3, play 20
@@ -11,7 +12,7 @@
 //! to the total. A stage that didn't happen (no capture for Test voice, no
 //! engine wait for a cloud voice) is left out.
 
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
@@ -79,12 +80,24 @@ impl std::fmt::Display for Report {
 }
 
 struct Trace {
+    id: TraceId,
     started: Instant,
     marks: Vec<(Stage, Instant)>,
 }
 
-/// Set while a trace is open, so the audio thread checks it without a lock.
-static OPEN: AtomicBool = AtomicBool::new(false);
+/// Names one read's trace. Marks carrying another read's id, such as a
+/// stopped reading's chunk finishing late, are ignored.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct TraceId(u64);
+
+impl TraceId {
+    /// Not traced.
+    pub const NONE: TraceId = TraceId(0);
+}
+
+/// The open trace's id, 0 if none, so the audio thread checks it without
+/// a lock.
+static OPEN: AtomicU64 = AtomicU64::new(0);
 static TRACE: Mutex<Option<Trace>> = Mutex::new(None);
 static LAST: Mutex<Option<Report>> = Mutex::new(None);
 
@@ -93,46 +106,67 @@ fn lock<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
 }
 
 /// Open a trace for a read triggered at `at`, replacing any still open.
-pub fn start(at: Instant) {
+pub fn start(at: Instant) -> TraceId {
+    static NEXT: AtomicU64 = AtomicU64::new(1);
+    let id = TraceId(NEXT.fetch_add(1, Ordering::Relaxed));
     lock(&LAST).take();
     *lock(&TRACE) = Some(Trace {
+        id,
         started: at,
         marks: Vec::new(),
     });
-    OPEN.store(true, Ordering::Release);
+    OPEN.store(id.0, Ordering::Release);
+    id
 }
 
-/// Record `stage` now, if a trace is open and it hasn't been recorded yet.
-/// Later chunks pass through the same stages and are ignored.
-pub fn mark(stage: Stage) {
-    if !OPEN.load(Ordering::Acquire) {
-        return;
+/// The open trace, if it is `id`'s.
+fn open(id: TraceId) -> Option<std::sync::MutexGuard<'static, Option<Trace>>> {
+    if id == TraceId::NONE || OPEN.load(Ordering::Acquire) != id.0 {
+        return None;
     }
-    if let Some(trace) = lock(&TRACE).as_mut() {
+    let trace = lock(&TRACE);
+    trace.as_ref().is_some_and(|t| t.id == id).then_some(trace)
+}
+
+/// Record `stage` now for read `id`, if its trace is open and the stage
+/// hasn't been recorded yet. Later chunks pass through the same stages and
+/// are ignored.
+pub fn mark(id: TraceId, stage: Stage) {
+    if let Some(mut guard) = open(id) {
+        let trace = guard.as_mut().expect("checked by open");
         if !trace.marks.iter().any(|(s, _)| *s == stage) {
             trace.marks.push((stage, Instant::now()));
         }
     }
 }
 
-/// The audio device took its first sample: close the trace and log it.
-pub fn first_sound() {
-    if !OPEN.swap(false, Ordering::AcqRel) {
-        return;
-    }
-    let Some(mut trace) = lock(&TRACE).take() else {
+/// The audio device took read `id`'s first sample: close its trace and log it.
+pub fn first_sound(id: TraceId) {
+    let Some(mut guard) = open(id) else {
         return;
     };
+    let mut trace = guard.take().expect("checked by open");
+    OPEN.store(0, Ordering::Release);
+    drop(guard);
     trace.marks.push((Stage::Play, Instant::now()));
     let report = report(&trace);
     log::info!("{report}");
     *lock(&LAST) = Some(report);
 }
 
-/// Drop the open trace: the read was stopped or failed before any sound.
-pub fn cancel() {
-    OPEN.store(false, Ordering::Release);
-    lock(&TRACE).take();
+/// Drop read `id`'s trace: it was stopped or failed before any sound.
+pub fn cancel(id: TraceId) {
+    if let Some(mut guard) = open(id) {
+        guard.take();
+        OPEN.store(0, Ordering::Release);
+    }
+}
+
+/// Drop whichever trace is open: Stop was pressed.
+pub fn cancel_any() {
+    let mut trace = lock(&TRACE);
+    trace.take();
+    OPEN.store(0, Ordering::Release);
 }
 
 /// The last finished trace.
@@ -171,6 +205,7 @@ mod tests {
     fn stages_add_up_to_the_total_in_stage_order() {
         let t0 = Instant::now();
         let trace = Trace {
+            id: TraceId(1),
             started: t0,
             // Recorded out of order, as threads can.
             marks: vec![
@@ -189,5 +224,30 @@ mod tests {
             r.to_string(),
             "first sound 720 ms: capture 150, chunk 1, synth 549, play 20"
         );
+    }
+}
+
+#[cfg(test)]
+mod stale_tests {
+    use super::*;
+
+    // The only test that opens traces, as they are global.
+    #[test]
+    fn an_older_read_cannot_touch_the_open_trace() {
+        let old = start(Instant::now());
+        let new = start(Instant::now());
+        mark(old, Stage::Synth);
+        first_sound(old);
+        cancel(old);
+        assert!(last().is_none(), "the old read closed the new trace");
+        mark(new, Stage::Synth);
+        first_sound(new);
+        let report = last().expect("closed by its own read");
+        assert_eq!(
+            report.stages.iter().map(|(s, _)| *s).collect::<Vec<_>>(),
+            [Stage::Synth, Stage::Play]
+        );
+        first_sound(TraceId::NONE);
+        assert!(last().is_some());
     }
 }

@@ -9,7 +9,7 @@ use tauri::{AppHandle, Manager};
 use tauri_plugin_notification::NotificationExt;
 
 use crate::chunker;
-use crate::latency::{self, Stage};
+use crate::latency::{self, Stage, TraceId};
 use crate::player::Player;
 use crate::reading::{Outcome, Reading, Slot};
 use crate::settings::Settings;
@@ -150,11 +150,12 @@ pub fn notify(app: &AppHandle, title: &str, body: &str) {
     let _ = app.notification().builder().title(title).body(body).show();
 }
 
-/// Start reading `text` aloud, replacing anything already playing.
-pub fn speak_text(app: &AppHandle, settings: &Settings, text: &str) {
+/// Start reading `text` aloud, replacing anything already playing. Its
+/// stages go on read `trace`'s timing.
+pub fn speak_text(app: &AppHandle, settings: &Settings, text: &str, trace: TraceId) {
     let text = text.trim();
     if text.is_empty() {
-        latency::cancel();
+        latency::cancel(trace);
         notify(app, "Voxtray", "No text was selected.");
         return;
     }
@@ -171,13 +172,13 @@ pub fn speak_text(app: &AppHandle, settings: &Settings, text: &str) {
     let mut engine = match ChunkEngine::open(app, settings) {
         Some(Ok(engine)) => engine,
         Some(Err(e)) => {
-            latency::cancel();
+            latency::cancel(trace);
             crate::pill::failed();
             return notify(app, "Could not read text", &e);
         }
         // The system voice speaks the whole text itself.
         None => {
-            latency::cancel();
+            latency::cancel(trace);
             match tts::local::speak(settings, text) {
                 Ok(child) => state.player.set_local_child(child),
                 Err(e) => notify(app, "Could not read text", &e),
@@ -186,18 +187,22 @@ pub fn speak_text(app: &AppHandle, settings: &Settings, text: &str) {
         }
     };
 
-    latency::mark(Stage::Open);
+    latency::mark(trace, Stage::Open);
     let interrupt = engine.interrupter();
     let handle = app.clone();
     let start = move || {
         let chunks = chunker::chunk(text);
-        latency::mark(Stage::Chunk);
-        Reading::start(
-            chunks,
-            move |chunk| engine.synthesize(chunk),
-            interrupt,
-            move |reading, outcome| finished(&handle, reading, outcome),
-        )
+        latency::mark(trace, Stage::Chunk);
+        let synth = move |chunk: &str| {
+            let pcm = engine.synthesize(chunk, trace);
+            latency::mark(trace, Stage::Decode);
+            pcm
+        };
+        let reading = Reading::start(chunks, synth, interrupt, move |reading, outcome| {
+            finished(&handle, reading, outcome)
+        });
+        reading.shared.set_trace(trace);
+        reading
     };
     // Opening the engine can take a while (the first Piper or Kokoro
     // download). If Stop or another read happened meanwhile, drop this one.
@@ -213,7 +218,7 @@ pub fn speak_text(app: &AppHandle, settings: &Settings, text: &str) {
         return;
     };
     if let Err(e) = played {
-        latency::cancel();
+        latency::cancel(trace);
         reading.stop();
         crate::pill::failed();
         notify(app, "Could not read text", &e);
@@ -230,7 +235,7 @@ fn finished(app: &AppHandle, reading: &Reading, outcome: Outcome) {
     }
     crate::sync_skip_hotkeys(app);
     if let Outcome::Failed(e) = outcome {
-        latency::cancel();
+        latency::cancel(reading.shared.trace());
         crate::pill::failed();
         notify(app, "Could not read text", &e);
     }
@@ -273,7 +278,7 @@ fn current_settings(app: &AppHandle) -> Settings {
 
 /// Capture the selection and read it. Runs the slow work on a worker thread.
 pub fn read_selection(app: &AppHandle) {
-    latency::start(Instant::now());
+    let trace = latency::start(Instant::now());
     // The engine loads while the selection is copied.
     prepare(app);
     let app = app.clone();
@@ -282,13 +287,13 @@ pub fn read_selection(app: &AppHandle) {
 
         let captured = capture_selection(settings.restore_clipboard);
         if let Ok(text) = &captured {
-            latency::mark(Stage::Capture);
+            latency::mark(trace, Stage::Capture);
             log::info!("captured {} chars", text.chars().count());
         }
         match captured {
-            Ok(text) => speak_text(&app, &settings, &text),
+            Ok(text) => speak_text(&app, &settings, &text, trace),
             Err(e) => {
-                latency::cancel();
+                latency::cancel(trace);
                 notify(&app, "Could not capture selection", &e)
             }
         }
@@ -328,7 +333,7 @@ fn stop_all(app: &AppHandle) -> u64 {
 
 /// Stop any current playback (all engines) and cancel pending synthesis.
 pub fn trigger_stop(app: &AppHandle) {
-    latency::cancel();
+    latency::cancel_any();
     stop_all(app);
     crate::sync_skip_hotkeys(app);
 }
@@ -389,7 +394,7 @@ the halyards ringing against the masts.";
         };
         prepare();
         std::thread::sleep(TAP);
-        latency::start(Instant::now());
+        let trace = latency::start(Instant::now());
         prepare();
         let copy = move || {
             // As simulate_copy does, without sending keys.
@@ -404,21 +409,24 @@ the halyards ringing against the masts.";
         };
         let captured = capture_with(true, copy).unwrap();
         assert_eq!(captured, text);
-        latency::mark(Stage::Capture);
+        latency::mark(trace, Stage::Capture);
 
         // As speak_text does.
         let engine = kokoro::Engine::open_local(&exe, &model, VOICE, 1.0).unwrap();
         let mut engine = ChunkEngine::Kokoro(engine);
-        latency::mark(Stage::Open);
+        latency::mark(trace, Stage::Open);
         let chunks = chunker::chunk(text);
-        latency::mark(Stage::Chunk);
+        latency::mark(trace, Stage::Chunk);
         let (tx, rx) = mpsc::channel();
-        let reading = Reading::start(
-            chunks,
-            move |chunk| engine.synthesize(chunk),
-            None,
-            move |_: &Reading, outcome| tx.send(outcome).unwrap(),
-        );
+        let synth = move |chunk: &str| {
+            let pcm = engine.synthesize(chunk, trace);
+            latency::mark(trace, Stage::Decode);
+            pcm
+        };
+        let reading = Reading::start(chunks, synth, None, move |_: &Reading, outcome| {
+            tx.send(outcome).unwrap()
+        });
+        reading.shared.set_trace(trace);
         player().play_timeline(reading.shared.clone()).unwrap();
 
         let deadline = Instant::now() + Duration::from_secs(60);

@@ -16,7 +16,7 @@ use voxtray_engine::{kokoro_lexicon, Client};
 
 use super::warm::KeepWarm;
 use crate::download;
-use crate::latency::{self, Stage};
+use crate::latency::{self, Stage, TraceId};
 use crate::settings::Settings;
 use crate::timeline::Pcm;
 
@@ -147,15 +147,16 @@ impl Engine {
         }
     }
 
-    pub fn synthesize(&mut self, text: &str) -> Result<Pcm, String> {
+    /// Speak `text`, marking its stages on read `trace`'s timing.
+    pub fn synthesize(&mut self, text: &str, trace: TraceId) -> Result<Pcm, String> {
         let loaded = self.loaded.as_mut().expect("only taken on drop");
         let ready = loaded.client.ready().map(|_| ());
         self.failed |= ready.is_err();
         ready?;
-        latency::mark(Stage::Ready);
+        latency::mark(trace, Stage::Ready);
         let wav = loaded.client.synthesize(text, &self.voice, self.speed);
         self.failed |= wav.is_err();
-        latency::mark(Stage::Synth);
+        latency::mark(trace, Stage::Synth);
         Pcm::decode(wav?)
     }
 }
@@ -214,24 +215,27 @@ mod tests {
     #[ignore = "needs voxtray-engine and the Kokoro model"]
     fn warm_engine_synthesises_chunks_in_order() {
         let mut engine = engine();
-        let short = engine.synthesize("Hi.").unwrap();
+        let short = engine.synthesize("Hi.", TraceId::NONE).unwrap();
         let long = engine
-            .synthesize("This sentence is a good deal longer than that.")
+            .synthesize(
+                "This sentence is a good deal longer than that.",
+                TraceId::NONE,
+            )
             .unwrap();
         assert_eq!((short.channels, short.sample_rate), (1, 24_000));
         assert!(long.duration() > short.duration());
-        assert!(engine.synthesize("...").is_ok());
+        assert!(engine.synthesize("...", TraceId::NONE).is_ok());
     }
 
     #[test]
     #[ignore = "needs voxtray-engine and the Kokoro model"]
     fn a_dropped_engine_is_reused_while_warm() {
         let mut engine = engine();
-        engine.synthesize("Hi.").unwrap();
+        engine.synthesize("Hi.", TraceId::NONE).unwrap();
         drop(engine);
         let mut again = Engine::reuse("af_bella", 1.2).expect("still warm");
         assert_eq!((again.voice.as_str(), again.speed), ("af_bella", 1.2));
-        again.synthesize("Hello again.").unwrap();
+        again.synthesize("Hello again.", TraceId::NONE).unwrap();
         drop(again);
         // A British voice needs the other lexicon, so it gets a new engine.
         assert!(Engine::reuse("bf_emma", 1.0).is_none());
@@ -250,7 +254,7 @@ mod tests {
         let (tx, rx) = std::sync::mpsc::channel();
         let reading = Reading::start(
             vec![long.to_string(); 3],
-            move |chunk| engine.synthesize(chunk),
+            move |chunk| engine.synthesize(chunk, TraceId::NONE),
             interrupt,
             move |_: &Reading, outcome| tx.send(outcome).unwrap(),
         );
@@ -259,6 +263,6 @@ mod tests {
         let outcome = rx.recv_timeout(std::time::Duration::from_secs(60));
         assert_eq!(outcome, Ok(Outcome::Stopped));
         let mut again = Engine::reuse("af_heart", 1.0).expect("still warm after stop");
-        again.synthesize("Still here.").unwrap();
+        again.synthesize("Still here.", TraceId::NONE).unwrap();
     }
 }
