@@ -8,5 +8,5 @@ https://github.com/harshaldevvv/voxtray. Do not open a public issue for it. You 
 ## Design notes
 
 - API keys live only in the OS keychain and are sent only to the provider they belong to, over HTTPS.
-- Voxtray opens no network ports. It only makes the outgoing requests listed in [PRIVACY.md](PRIVACY.md).
+- Vox opens no network ports. It only makes the outgoing requests listed in [PRIVACY.md](PRIVACY.md).
 - Release builds are produced by GitHub Actions from the tagged source.

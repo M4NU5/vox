@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="src-tauri/icons/128x128.png" width="96" height="96" alt="Voxtray" />
+<img src="src-tauri/icons/128x128.png" width="96" height="96" alt="Vox" />
 
-# Voxtray
+# Vox
 
 **Select text in any app, press a hotkey, hear it read aloud.**
 
@@ -52,8 +52,8 @@ that runs entirely on your machine. The engine and your chosen voice (~50 MB)
 download once on first use, then work offline with no key and no cost.
 
 **Kokoro** is a free neural voice ([Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M))
-that also runs on your machine, in `voxtray-engine`, a separate program installed
-with Voxtray. The model is about 350 MB and downloads once, on first use. The
+that also runs on your machine, in `vox-engine`, a separate program installed
+with Vox. The model is about 350 MB and downloads once, on first use. The
 first reading waits about 2 seconds while the model loads. It then stays loaded
 for 10 minutes, so later readings start right away.
 
@@ -106,14 +106,14 @@ Details in [PRIVACY.md](PRIVACY.md).
 
 ## License and disclaimer
 
-Voxtray is free, open source software under the [MIT License](LICENSE). Contributions welcome: see
+Vox is free, open source software under the [MIT License](LICENSE). Contributions welcome: see
 [CONTRIBUTING.md](CONTRIBUTING.md). Third-party components and their licences are listed in
-[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md). The Kokoro engine that installs with Voxtray, `voxtray-engine`,
+[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md). The Kokoro engine that installs with Vox, `vox-engine`,
 includes espeak-ng, so that one program falls under the GPL-3.0-or-later. Report security issues privately as described in
 [SECURITY.md](SECURITY.md).
 
-Voxtray is provided as is, without warranty of any kind. Cloud voices are billed by their providers to your own
+Vox is provided as is, without warranty of any kind. Cloud voices are billed by their providers to your own
 account, and their terms apply to what you send them. OpenAI and ElevenLabs are trademarks of their owners;
-Voxtray is independent and not affiliated with them.
+Vox is independent and not affiliated with them.
 
 Made by [harshal.dev](https://harshal.dev).

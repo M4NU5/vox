@@ -9,7 +9,7 @@
 """Pronunciation eval: how well does Kokoro say tricky text?
 
 Each case in cases.tsv is read through the normaliser (src/normalise.rs),
-synthesised by the real voxtray-engine, transcribed back by Whisper, and the
+synthesised by the real vox-engine, transcribed back by Whisper, and the
 transcript is scored by word error rate against the expected spoken form.
 
 A dev tool. Nothing here ships. See docs/DEVELOPMENT.md for how to run it.
@@ -41,7 +41,7 @@ import numpy as np
 
 HERE = Path(__file__).resolve().parent
 CRATE = HERE.parent.parent  # src-tauri
-CACHE = Path(os.environ.get("VOXTRAY_EVAL_CACHE", Path.home() / ".cache" / "voxtray-eval"))
+CACHE = Path(os.environ.get("VOX_EVAL_CACHE", Path.home() / ".cache" / "vox-eval"))
 
 # Pinned archives. Bumping one means updating its SHA-256 here.
 MODELS = {
@@ -134,10 +134,10 @@ def normalise(texts: list[str], off: str | None) -> list[str]:
 
 
 def engine_exe() -> Path:
-    if exe := os.environ.get("VOXTRAY_ENGINE_EXE"):
+    if exe := os.environ.get("VOX_ENGINE_EXE"):
         return Path(exe)
-    subprocess.run(["cargo", "build", "-q", "--release", "-p", "voxtray-engine"], cwd=CRATE, check=True)
-    return CRATE / "target" / "release" / "voxtray-engine"
+    subprocess.run(["cargo", "build", "-q", "--release", "-p", "vox-engine"], cwd=CRATE, check=True)
+    return CRATE / "target" / "release" / "vox-engine"
 
 
 def synthesise(texts: list[str], voice: str) -> list[Path]:
@@ -148,7 +148,7 @@ def synthesise(texts: list[str], voice: str) -> list[Path]:
     todo = [(t, p) for t, p in zip(texts, paths) if not p.exists()]
     if todo:
         model = ensure_model("kokoro")
-        out_dir = Path(tempfile.mkdtemp(prefix="voxtray-eval-"))
+        out_dir = Path(tempfile.mkdtemp(prefix="vox-eval-"))
         proc = subprocess.Popen(
             [str(engine_exe()), "--model-dir", str(model), "--out-dir", str(out_dir), "--voice", voice],
             stdin=subprocess.PIPE,

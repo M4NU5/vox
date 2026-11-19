@@ -1,9 +1,9 @@
-//! `voxtray-engine`: Kokoro text-to-speech, driven by Voxtray over stdin and
-//! stdout with the protocol in [`voxtray_engine::protocol`]. Voxtray keeps
+//! `vox-engine`: Kokoro text-to-speech, driven by Vox over stdin and
+//! stdout with the protocol in [`vox_engine::protocol`]. Vox keeps
 //! one loaded for a while after each reading.
 //!
 //! ```text
-//! voxtray-engine --model-dir <dir> --out-dir <dir> [--voice af_heart] [--threads N]
+//! vox-engine --model-dir <dir> --out-dir <dir> [--voice af_heart] [--threads N]
 //! ```
 //!
 //! `--voice` picks the lexicon (American or British) loaded with the model.
@@ -13,7 +13,7 @@ mod kokoro;
 
 use std::path::PathBuf;
 
-use voxtray_engine::protocol::{self, Response};
+use vox_engine::protocol::{self, Response};
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -24,19 +24,19 @@ fn main() {
     };
 
     let (Some(model_dir), Some(out_dir)) = (
-        voxtray_engine::arg(&args, "--model-dir"),
-        voxtray_engine::arg(&args, "--out-dir"),
+        vox_engine::arg(&args, "--model-dir"),
+        vox_engine::arg(&args, "--out-dir"),
     ) else {
         fail(
             &mut out,
-            "usage: voxtray-engine --model-dir <dir> --out-dir <dir> [--voice <name>] [--threads <n>]"
+            "usage: vox-engine --model-dir <dir> --out-dir <dir> [--voice <name>] [--threads <n>]"
                 .into(),
             2,
         );
     };
-    let voice = voxtray_engine::arg(&args, "--voice").unwrap_or_else(|| "af_heart".into());
+    let voice = vox_engine::arg(&args, "--voice").unwrap_or_else(|| "af_heart".into());
     // RTF stops improving past about 8 threads (0.37 on an i7-13700K).
-    let threads = voxtray_engine::arg(&args, "--threads")
+    let threads = vox_engine::arg(&args, "--threads")
         .and_then(|n| n.parse().ok())
         .unwrap_or_else(|| {
             std::thread::available_parallelism().map_or(4, |n| n.get().min(8) as i32)

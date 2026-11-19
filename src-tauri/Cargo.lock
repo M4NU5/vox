@@ -5549,10 +5549,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
-name = "voxtray"
+name = "vox"
 version = "0.2.0"
 dependencies = [
  "arboard",
+ "auto-launch",
  "bzip2 0.6.1",
  "enigo",
  "flate2",
@@ -5573,13 +5574,13 @@ dependencies = [
  "tauri-plugin-notification",
  "tauri-plugin-opener",
  "unicode-segmentation",
- "voxtray-engine",
+ "vox-engine",
  "windows-sys 0.61.2",
  "zip",
 ]
 
 [[package]]
-name = "voxtray-engine"
+name = "vox-engine"
 version = "0.2.0"
 dependencies = [
  "log",

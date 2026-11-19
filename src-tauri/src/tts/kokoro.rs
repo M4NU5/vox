@@ -1,5 +1,5 @@
-//! Kokoro: free, offline, neural voice. It runs in `voxtray-engine`, a
-//! separate binary that ships next to Voxtray (see the `voxtray_engine`
+//! Kokoro: free, offline, neural voice. It runs in `vox-engine`, a
+//! separate binary that ships next to Vox (see the `vox_engine`
 //! crate). The model is fetched on first use (see [`crate::download`]).
 //!
 //! The engine stays loaded for [`KEEP_WARM`] after a reading, so the next
@@ -12,7 +12,7 @@ use std::process::Command;
 use std::time::Duration;
 
 use tauri::AppHandle;
-use voxtray_engine::{kokoro_lexicon, Client};
+use vox_engine::{kokoro_lexicon, Client};
 
 use super::warm::KeepWarm;
 use crate::download;
@@ -177,10 +177,10 @@ pub fn forget_warm_engine() {
     drop(IDLE.take());
 }
 
-/// The engine binary: `VOXTRAY_ENGINE_EXE` if set (for development),
-/// otherwise `voxtray-engine` next to Voxtray, where the installer puts it.
+/// The engine binary: `VOX_ENGINE_EXE` if set (for development),
+/// otherwise `vox-engine` next to Vox, where the installer puts it.
 pub fn engine_exe() -> Result<PathBuf, String> {
-    if let Some(exe) = std::env::var_os("VOXTRAY_ENGINE_EXE") {
+    if let Some(exe) = std::env::var_os("VOX_ENGINE_EXE") {
         return Ok(PathBuf::from(exe));
     }
     let exe = std::env::current_exe()
@@ -188,14 +188,14 @@ pub fn engine_exe() -> Result<PathBuf, String> {
         .and_then(|me| {
             Some(
                 me.parent()?
-                    .join(format!("voxtray-engine{}", std::env::consts::EXE_SUFFIX)),
+                    .join(format!("vox-engine{}", std::env::consts::EXE_SUFFIX)),
             )
         })
         .ok_or("could not locate the Kokoro engine")?;
     if exe.exists() {
         Ok(exe)
     } else {
-        Err("The Kokoro engine (voxtray-engine) is missing. Reinstall Voxtray.".into())
+        Err("The Kokoro engine (vox-engine) is missing. Reinstall Vox.".into())
     }
 }
 
@@ -203,16 +203,16 @@ pub fn engine_exe() -> Result<PathBuf, String> {
 mod tests {
     use super::*;
 
-    /// The engine from `VOXTRAY_ENGINE_EXE` and the model from
-    /// `VOXTRAY_KOKORO_MODEL`. Run with `cargo test -- --ignored`.
+    /// The engine from `VOX_ENGINE_EXE` and the model from
+    /// `VOX_KOKORO_MODEL`. Run with `cargo test -- --ignored`.
     fn engine() -> Engine {
-        let exe = engine_exe().expect("set VOXTRAY_ENGINE_EXE");
-        let model = std::env::var_os("VOXTRAY_KOKORO_MODEL").expect("set VOXTRAY_KOKORO_MODEL");
+        let exe = engine_exe().expect("set VOX_ENGINE_EXE");
+        let model = std::env::var_os("VOX_KOKORO_MODEL").expect("set VOX_KOKORO_MODEL");
         Engine::spawn(&exe, Path::new(&model), "af_heart", 1.0).expect("spawn Kokoro")
     }
 
     #[test]
-    #[ignore = "needs voxtray-engine and the Kokoro model"]
+    #[ignore = "needs vox-engine and the Kokoro model"]
     fn warm_engine_synthesises_chunks_in_order() {
         let mut engine = engine();
         let short = engine.synthesize("Hi.", TraceId::NONE).unwrap();
@@ -228,7 +228,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "needs voxtray-engine and the Kokoro model"]
+    #[ignore = "needs vox-engine and the Kokoro model"]
     fn a_dropped_engine_is_reused_while_warm() {
         let mut engine = engine();
         engine.synthesize("Hi.", TraceId::NONE).unwrap();
@@ -242,7 +242,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "needs voxtray-engine and the Kokoro model"]
+    #[ignore = "needs vox-engine and the Kokoro model"]
     fn stopping_mid_chunk_keeps_the_engine_warm() {
         use crate::reading::{Outcome, Reading};
         use crate::tts::ChunkEngine;

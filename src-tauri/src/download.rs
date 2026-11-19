@@ -110,7 +110,7 @@ pub fn find_voice(key: &str) -> Result<&'static PiperVoice, String> {
 
 // --- Paths -------------------------------------------------------------------
 
-fn base_data_dir() -> Option<PathBuf> {
+pub(crate) fn base_data_dir() -> Option<PathBuf> {
     #[cfg(target_os = "windows")]
     {
         std::env::var_os("LOCALAPPDATA").map(PathBuf::from)
@@ -316,7 +316,7 @@ fn copy_checked(
     }
     if format!("{:x}", hasher.finalize()) != sha256 {
         return Err(format!(
-            "download {label}: the file isn't the one Voxtray expects (SHA-256 mismatch). Try again later."
+            "download {label}: the file isn't the one Vox expects (SHA-256 mismatch). Try again later."
         ));
     }
     Ok(())
@@ -514,21 +514,21 @@ fn kokoro_wants(path: &Path) -> bool {
 mod tests {
     use super::*;
 
-    /// SHA-256 of `b"voxtray"`.
-    const VOXTRAY_SHA256: &str = "c5a5567ae3da2a74f9664113836c3fe31ff5aac91d7b3f356c066273264917a3";
+    /// SHA-256 of `b"vox"`.
+    const VOX_SHA256: &str = "b675469b940b1853ca2b177b23048bc3275f45949864ce82cbdadc786109c192";
 
     #[test]
     fn copy_checked_keeps_a_matching_download() {
         let mut out = Vec::new();
         let mut seen = 0;
-        copy_checked(&mut &b"voxtray"[..], &mut out, "test", VOXTRAY_SHA256, |n| seen = n).unwrap();
-        assert_eq!(out, b"voxtray");
-        assert_eq!(seen, 7);
+        copy_checked(&mut &b"vox"[..], &mut out, "test", VOX_SHA256, |n| seen = n).unwrap();
+        assert_eq!(out, b"vox");
+        assert_eq!(seen, 3);
     }
 
     #[test]
     fn copy_checked_rejects_a_changed_download() {
-        let err = copy_checked(&mut &b"voxtraY"[..], &mut Vec::new(), "voice", VOXTRAY_SHA256, |_| {}).unwrap_err();
+        let err = copy_checked(&mut &b"voX"[..], &mut Vec::new(), "voice", VOX_SHA256, |_| {}).unwrap_err();
         assert!(err.contains("SHA-256 mismatch"), "{err}");
     }
 
@@ -578,13 +578,13 @@ mod tests {
         }
     }
 
-    /// Unpacks the real archive. `VOXTRAY_KOKORO_ARCHIVE` must point at a
+    /// Unpacks the real archive. `VOX_KOKORO_ARCHIVE` must point at a
     /// downloaded `kokoro-multi-lang-v1_0.tar.bz2`.
     #[test]
     #[ignore = "needs the Kokoro model archive"]
     fn kokoro_archive_unpacks_to_a_usable_model() {
-        let archive = std::env::var_os("VOXTRAY_KOKORO_ARCHIVE").expect("set VOXTRAY_KOKORO_ARCHIVE");
-        let dest = std::env::temp_dir().join(format!("voxtray-kokoro-unpack-{}", std::process::id()));
+        let archive = std::env::var_os("VOX_KOKORO_ARCHIVE").expect("set VOX_KOKORO_ARCHIVE");
+        let dest = std::env::temp_dir().join(format!("vox-kokoro-unpack-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dest);
         extract_kokoro(Path::new(&archive), &dest).unwrap();
         let model = dest.join(KOKORO_MODEL);

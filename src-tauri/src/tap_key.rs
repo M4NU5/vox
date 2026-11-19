@@ -234,7 +234,7 @@ mod hook {
     unsafe extern "system" fn keyboard(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
         if code == HC_ACTION as i32 {
             let event = unsafe { &*(lparam as *const KBDLLHOOKSTRUCT) };
-            // Skip Voxtray's own synthetic Ctrl+C, and AltGr's extra Ctrl.
+            // Skip Vox's own synthetic Ctrl+C, and AltGr's extra Ctrl.
             if event.dwExtraInfo != enigo::EVENT_MARKER as usize
                 && event.scanCode != super::ALTGR_CTRL_SCAN
             {

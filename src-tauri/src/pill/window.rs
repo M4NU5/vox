@@ -869,8 +869,8 @@ fn present(window: HWND, pill: &mut Pill, frame: &Frame, now: f32, tip: Option<&
 
 unsafe fn create_window() -> HWND {
     super::canvas::start();
-    let class_name: Vec<u16> = "VoxtrayPill\0".encode_utf16().collect();
-    let title: Vec<u16> = "Voxtray reading\0".encode_utf16().collect();
+    let class_name: Vec<u16> = "VoxPill\0".encode_utf16().collect();
+    let title: Vec<u16> = "Vox reading\0".encode_utf16().collect();
     unsafe {
         let instance = GetModuleHandleW(null());
         let class = WNDCLASSW {
@@ -1086,11 +1086,11 @@ mod tests {
         assert!((gone.width - ORB).abs() < 0.01, "{}", gone.width);
     }
 
-    /// Writes PNGs of each state to `VOXTRAY_PILL_SHOTS`, for the PR.
+    /// Writes PNGs of each state to `VOX_PILL_SHOTS`, for the PR.
     #[test]
-    #[ignore = "writes images; set VOXTRAY_PILL_SHOTS"]
+    #[ignore = "writes images; set VOX_PILL_SHOTS"]
     fn render_each_state() {
-        let dir = std::env::var("VOXTRAY_PILL_SHOTS").expect("VOXTRAY_PILL_SHOTS");
+        let dir = std::env::var("VOX_PILL_SHOTS").expect("VOX_PILL_SHOTS");
         let now = 10.0;
         let tip = Tip {
             label: "Back 5 s".into(),
@@ -1222,7 +1222,7 @@ mod desktop_tests {
         let x = rect.left + (left + Button::Back.x() * k) as i32;
         unsafe { SetCursorPos(x, rect.top + (top + BUTTON_Y * k) as i32) };
         std::thread::sleep(Duration::from_millis(900));
-        if let Ok(dir) = std::env::var("VOXTRAY_PILL_SHOTS") {
+        if let Ok(dir) = std::env::var("VOX_PILL_SHOTS") {
             screenshot(rect, &format!("{dir}\\desktop-hover.png"));
         }
         unsafe { SetCursorPos(cursor.x, cursor.y) };

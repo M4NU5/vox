@@ -35,7 +35,7 @@ impl Client {
     /// to load, so a stop during loading can kill it.
     pub fn spawn(mut cmd: Command, name: &str) -> Result<Client, String> {
         let out_dir = std::env::temp_dir().join(format!(
-            "voxtray-{}-{}-{}",
+            "vox-{}-{}-{}",
             name.to_lowercase(),
             std::process::id(),
             std::time::SystemTime::now()

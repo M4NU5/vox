@@ -157,7 +157,7 @@ pub fn speak_text(app: &AppHandle, settings: &Settings, text: &str, trace: Trace
     let text = text.trim();
     if text.is_empty() {
         latency::cancel(trace);
-        notify(app, "Voxtray", "No text was selected.");
+        notify(app, "Vox", "No text was selected.");
         return;
     }
     // Spell out URLs, numbers, code and so on for the English local voices.
@@ -350,7 +350,7 @@ pub fn trigger_stop(app: &AppHandle) {
 /// answering Ctrl+C are simulated. Plays a moment of each reading on the
 /// default device, and puts the clipboard's text back after each.
 ///
-/// Needs `VOXTRAY_ENGINE_EXE` and `VOXTRAY_KOKORO_MODEL`. Run with
+/// Needs `VOX_ENGINE_EXE` and `VOX_KOKORO_MODEL`. Run with
 /// `cargo test --lib first_sound -- --ignored --nocapture --test-threads 1`.
 #[cfg(test)]
 mod first_sound {
@@ -393,7 +393,7 @@ the halyards ringing against the masts.";
     /// One read of `text`, from the read key going down to the first sample
     /// played. The report counts from the key coming up, as the app does.
     fn read(text: &'static str) -> Report {
-        let (exe, model) = (path("VOXTRAY_ENGINE_EXE"), path("VOXTRAY_KOKORO_MODEL"));
+        let (exe, model) = (path("VOX_ENGINE_EXE"), path("VOX_KOKORO_MODEL"));
         // As the read key going down, then read_selection, do.
         let prepare = || {
             let (exe, model) = (exe.clone(), model.clone());
@@ -495,9 +495,9 @@ the halyards ringing against the masts.";
     }
 
     #[test]
-    #[ignore = "needs voxtray-engine, the Kokoro model, a clipboard and speakers"]
+    #[ignore = "needs vox-engine, the Kokoro model, a clipboard and speakers"]
     fn first_sound_timings() {
-        let n: usize = std::env::var("VOXTRAY_RUNS").map_or(5, |s| s.parse().unwrap());
+        let n: usize = std::env::var("VOX_RUNS").map_or(5, |s| s.parse().unwrap());
         for text in [SHORT, LONG] {
             let first = chunker::chunk(text)[0].chars().count();
             println!("{} chars, first chunk {first}", text.chars().count());

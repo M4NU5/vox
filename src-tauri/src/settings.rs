@@ -8,11 +8,11 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::OnceLock;
 
-/// The bundle identifier this build runs as. Voxtray Dev has its own, so its
+/// The bundle identifier this build runs as. Vox Dev has its own, so its
 /// settings, downloads, log and keychain entries stay apart from the installed
 /// app. Also the keychain service name.
 static APP_ID: OnceLock<String> = OnceLock::new();
-const DEFAULT_APP_ID: &str = "dev.harshal.voxtray";
+const DEFAULT_APP_ID: &str = "dev.harshal.vox";
 
 /// Set once at startup from the Tauri config.
 pub fn set_app_id(id: &str) {
@@ -32,7 +32,7 @@ pub enum Provider {
     Elevenlabs,
     /// Free, offline, neural local voice (downloaded on first use).
     Piper,
-    /// Free, offline neural voice run by the bundled voxtray-engine (beta).
+    /// Free, offline neural voice run by the bundled vox-engine (beta).
     Kokoro,
     /// Built-in operating-system voice.
     Local,
@@ -117,7 +117,7 @@ impl Default for Settings {
     }
 }
 
-/// This build's config folder, holding settings.json and voxtray.log.
+/// This build's config folder, holding settings.json and vox.log.
 pub fn config_dir() -> Result<PathBuf, String> {
     let mut dir = dirs_config_dir().ok_or("could not resolve a config directory")?;
     dir.push(app_id());
@@ -130,7 +130,7 @@ fn config_path() -> Result<PathBuf, String> {
 }
 
 /// Minimal config-dir resolution without pulling in the `dirs` crate.
-fn dirs_config_dir() -> Option<PathBuf> {
+pub(crate) fn dirs_config_dir() -> Option<PathBuf> {
     #[cfg(target_os = "windows")]
     {
         std::env::var_os("APPDATA").map(PathBuf::from)

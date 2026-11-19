@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Build voxtray-engine (the Kokoro engine) in release mode and put it where
-# Tauri's externalBin looks for it: src-tauri/binaries/voxtray-engine-<target>.
+# Build vox-engine (the Kokoro engine) in release mode and put it where
+# Tauri's externalBin looks for it: src-tauri/binaries/vox-engine-<target>.
 # Then bundle with: tauri build --config src-tauri/tauri.engine.conf.json
 #
 # Usage: scripts/build-engine.sh [target]   (default: this machine's target)
@@ -15,13 +15,13 @@ mkdir -p binaries
 
 if [ "$target" = universal-apple-darwin ]; then
   for t in aarch64-apple-darwin x86_64-apple-darwin; do
-    cargo build --release -p voxtray-engine --target "$t"
+    cargo build --release -p vox-engine --target "$t"
   done
-  lipo -create -output binaries/voxtray-engine-universal-apple-darwin \
-    target/aarch64-apple-darwin/release/voxtray-engine \
-    target/x86_64-apple-darwin/release/voxtray-engine
+  lipo -create -output binaries/vox-engine-universal-apple-darwin \
+    target/aarch64-apple-darwin/release/vox-engine \
+    target/x86_64-apple-darwin/release/vox-engine
 else
-  cargo build --release -p voxtray-engine --target "$target"
-  cp "target/$target/release/voxtray-engine$ext" "binaries/voxtray-engine-$target$ext"
+  cargo build --release -p vox-engine --target "$target"
+  cp "target/$target/release/vox-engine$ext" "binaries/vox-engine-$target$ext"
 fi
-echo "Built src-tauri/binaries/voxtray-engine-$target$ext"
+echo "Built src-tauri/binaries/vox-engine-$target$ext"

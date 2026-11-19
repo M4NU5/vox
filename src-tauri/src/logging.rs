@@ -1,4 +1,4 @@
-//! A small file logger: `voxtray.log` in the config folder, replaced on each
+//! A small file logger: `vox.log` in the config folder, replaced on each
 //! launch. It records timings, state changes and errors, never the text being
 //! read.
 
@@ -18,7 +18,7 @@ struct FileLogger {
 impl Log for FileLogger {
     fn enabled(&self, m: &Metadata) -> bool {
         // Only our own crate; dependencies are noisy at info level.
-        m.level() <= Level::Info && m.target().starts_with("voxtray")
+        m.level() <= Level::Info && m.target().starts_with("vox")
     }
 
     fn log(&self, r: &Record) {

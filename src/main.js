@@ -243,7 +243,7 @@ listen("hd-done", async (e) => {
 });
 
 // ---------------------------------------------------------------------------
-// Kokoro (beta) — runs in the bundled voxtray-engine; the model downloads once
+// Kokoro (beta) — runs in the bundled vox-engine; the model downloads once
 // ---------------------------------------------------------------------------
 function setKokoroStatus(text, kind) {
   const el = $("kokoro-status");
@@ -257,7 +257,7 @@ async function refreshKokoroStatus() {
   if (kokoroBusy) return; // keep showing download progress
   try {
     const st = await invoke("kokoro_status");
-    if (!st.engine) setKokoroStatus("Kokoro engine missing — reinstall Voxtray.", "err");
+    if (!st.engine) setKokoroStatus("Kokoro engine missing — reinstall Vox.", "err");
     else if (st.model) setKokoroStatus("✓ Downloaded — ready offline", "ok");
     else setKokoroStatus("Not downloaded yet — click Download (~350 MB).", "");
     $("kokoro-download").disabled = kokoroBusy || !st.engine || st.model;

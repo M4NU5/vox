@@ -3,8 +3,8 @@
 use std::path::Path;
 
 use sherpa_onnx::{GenerationConfig, OfflineTts, OfflineTtsConfig, OfflineTtsKokoroModelConfig};
-use voxtray_engine::kokoro_lexicon;
-use voxtray_engine::protocol::Backend;
+use vox_engine::kokoro_lexicon;
+use vox_engine::protocol::Backend;
 
 /// Voice names in speaker-id order for `kokoro-multi-lang-v1_0`. From
 /// <https://k2-fsa.github.io/sherpa/onnx/tts/pretrained_models/kokoro.html>

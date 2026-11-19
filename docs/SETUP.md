@@ -13,7 +13,7 @@ Download the build for your OS from the
 - **macOS** — open the `.dmg` and drag the app to Applications. On first launch,
   right-click the app → **Open** to bypass Gatekeeper (unsigned build).
 - **Linux** — make the `.AppImage` executable (`chmod +x`) and run it, or
-  install the `.deb` with `sudo apt install ./voxtray_*.deb`.
+  install the `.deb` with `sudo apt install ./vox_*.deb`.
 
 ## 2. Choose a voice engine
 
@@ -73,7 +73,7 @@ behind Accessibility permission.
 
 - On first read, macOS prompts you. Approve it, **or**
 - go to **System Settings → Privacy & Security → Accessibility** and enable
-  **Voxtray**.
+  **Vox**.
 
 If reading returns "No text was selected" right after granting permission, quit
 and reopen the app so the new permission takes effect.

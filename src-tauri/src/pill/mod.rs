@@ -1,4 +1,4 @@
-//! The reading pill: a small black pill above the taskbar while Voxtray reads.
+//! The reading pill: a small black pill above the taskbar while Vox reads.
 //! Its top row is an equaliser and the time read, like Inlay's recording
 //! pill. Its bottom row has buttons to skip back, pause, skip forward and stop.
 //! Windows only.

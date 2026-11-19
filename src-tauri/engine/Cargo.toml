@@ -1,9 +1,9 @@
 [package]
-name = "voxtray-engine"
+name = "vox-engine"
 version = "0.2.0"
-description = "Voxtray's local speech engine: Kokoro via sherpa-onnx, driven over stdio."
+description = "Vox's local speech engine: Kokoro via sherpa-onnx, driven over stdio."
 authors = ["Harshal"]
-# This crate's own code is MIT. The voxtray-engine binary statically links
+# This crate's own code is MIT. The vox-engine binary statically links
 # sherpa-onnx, which includes espeak-ng (GPL-3.0-or-later), so the binary as
 # built and shipped is a GPL-3.0-or-later work. See THIRD-PARTY-NOTICES.md.
 license = "MIT"
@@ -14,10 +14,10 @@ autobins = false
 
 # The protocol and the host-side client. The app links only this part.
 [lib]
-name = "voxtray_engine"
+name = "vox_engine"
 
 [[bin]]
-name = "voxtray-engine"
+name = "vox-engine"
 path = "src/main.rs"
 required-features = ["kokoro"]
 
