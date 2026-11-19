@@ -114,14 +114,14 @@ it.
 `src-tauri/tests/pronunciation` measures it. `cases.tsv` holds about 230
 tricky inputs, each with the spoken form a careful human reader would use.
 `eval.py` reads every case through the normaliser, synthesises it with the
-real `voxtray-engine` (Kokoro, voice `af_heart`), transcribes the audio with
+real `vox-engine` (Kokoro, voice `af_heart`), transcribes the audio with
 Whisper large-v3-turbo through sherpa-onnx, and reports the word error rate
 overall, per category, and for the worst cases.
 
 You need [uv](https://docs.astral.sh/uv/) and about 1.5 GB of disk. The first
 run downloads the Kokoro and Whisper archives, checks them against the SHA-256
 pinned in `eval.py`, and builds the engine. Audio and transcripts are cached in
-`~/.cache/voxtray-eval` (`VOXTRAY_EVAL_CACHE` moves it), so later runs only
+`~/.cache/vox-eval` (`VOX_EVAL_CACHE` moves it), so later runs only
 redo the cases whose normalised text changed.
 
 ```bash

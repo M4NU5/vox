@@ -7,7 +7,7 @@
 
 use std::io::Read;
 
-use voxtray_lib::normalise::{normalise_with, Rule};
+use vox_lib::normalise::{normalise_with, Rule};
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
